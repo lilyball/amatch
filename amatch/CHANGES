@@ -1,0 +1,8 @@
+2004-09-27 (0.1.3)
+    * Rakefile and gem support added.
+2004-09-24 (0.1.2)
+    * Uses Test::Unit for regression tests now.
+2002-04-21 (0.1.1)
+    * Minor changes: documentation, more test cases and exceptions.
+2002-03-14 (0.1.0)
+    * Initial Version

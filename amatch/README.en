@@ -1,0 +1,27 @@
+Installation
+============
+
+Just type into the command line as root:
+
+# ruby install.rb config
+# ruby install.rb setup
+# ruby install.rb install
+
+install.rb was taken from Minero Aoki's setup project:
+	http://www.ruby-lang.org/en/raa-list.rhtml?name=setup.rb
+
+Documentation
+=============
+
+More documentation about this extension can be found in amatch.txt.en.
+
+Author
+======
+
+Florian Frank <flori@ping.de>
+
+License
+=======
+
+GNU General Public License (GPL)
+

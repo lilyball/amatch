@@ -1,0 +1,117 @@
+AMatch
+
+Approximate Matching/Searching/Comparing
+
+SYNOPSIS
+
+	require 'amatch'
+
+	m = Amatch.new("pattern")
+
+	p m.match("pattren")
+	p m.match(["pattren","parent"])
+	p m.matchr("pattren")
+	p m.compare("pattren")
+	p m.comparer("pattren")
+	p m.compare("pattn")
+	p m.comparer("pattn")
+	p m.search("abcpattrendef")
+	p m.searchr("abcpattrendef")
+
+DESCRIPTION
+
+This class enables your programs to do approximate matching, searching and
+comparing of strings. It uses an algorithm that calculates the Levenstein
+distance between those strings to implement those features.
+
+The Levenstein edit distance is defined as the minimal costs involved to
+transform one string into another by using three elementary operations:
+deletion, insertion and substitution of a character. To transform "water" into
+"wine", for instance, you have to substitute ?a -> i?: "witer", ?t -> ?n:
+"winer" and delete ?r: "wine". The edit distance between "water" and "wine" is
+3, because you have to apply three operations. The edit distance between
+"wine" and "wine" is 0, of course: no operation is necessary for the
+transformation -- they're already the same string. It's easy to see that more
+similar strings have smaller edit distances than strings that differ a lot.
+
+You can als use different weights for every operation to prefer special
+operations over others. There are three different kinds of match methods
+defined in this class: "match" computes the Levenstein distance between a
+pattern and some strings, "search" searches in some text for a special pattern
+returning a minimal distance, "compare" calculates a value that can be used to
+define a partial order between strings in relation to a given pattern. It's
+also possible to compute a relative distance. This floating point value is
+computed as absolute distance / length of search pattern.
+
+CONSTRUCTOR
+
+- Amatch#new(pattern)
+
+constructs an Amatch object and initializes it with 'pattern'. If no 'pattern'
+is given it has to be set with Amatch#pattern before matching.
+
+METHODS
+
+- Amatch#pattern	pattern string to match against
+
+- Amatch#subw		weight of one substitution (type Fixnum)
+
+- Amatch#delw		weight of one deletion (type Fixnum)
+
+- Amatch#insw		weight of one insertion (type Fixnum)
+
+- Amatch#resetw		resets all weights to their default values (=1).
+
+The following methods require the parameter 'strings'. This parameter can be
+of type String or Array of Strings. The method executes the matching operation
+and returns a number if a string was given. If an array of strings was given
+it returns an array of numbers.
+
+- Amatch#match(strings)
+
+  calculates the absolute edit distance(s) between 'pattern' and 'strings' =
+  the Levenstein distance in char operations. See also Amatch#pattern.
+
+- Amatch#matchr(strings)
+
+  calculates the relative edit distance as float. This value is defined as the
+  edit distance divided by the length of 'pattern'. See also Amatch#pattern.
+
+- Amatch#search(strings)
+
+  searches 'pattern' in strings and returns the edit distance by greedy
+  trimming prefixes or postfixes of the match.
+
+- Amatch#searchr(strings)
+
+  does the same as Amatch#search but divides the edit distance by the length
+  of 'pattern' and returns the value as float.
+
+- Amatch#compare(strings)
+
+  calculates the same absolute value like Amatch#match. The sign of the result
+  value is negative if the strings are shorter than 'pattern' or positive
+  else.
+
+- Amatch#comparer(strings)
+
+  calculates the same absolute value like Amatch#matchr. The sign of the
+  result value is negative if the strings are shorter than 'pattern' or
+  positive else.
+
+EXAMPLES
+
+An agrep utility will be installed that demonstrates the usage of this
+library.
+
+AUTHOR
+
+Florian Frank <flori@ping.de>
+
+COPYRIGHT
+
+Copyright (c) 2002	Florian Frank <flori@ping.de>
+
+This is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License Version 2 as published by the Free
+Software Foundation: http://www.gnu.org/copyleft/gpl.html
