@@ -4,19 +4,19 @@ Approximate Matching/Searching/Comparing
 
 SYNOPSIS
 
-	require 'amatch'
+    require 'amatch'
 
-	m = Amatch.new("pattern")
+    m = Amatch.new("pattern")
 
-	p m.match("pattren")
-	p m.match(["pattren","parent"])
-	p m.matchr("pattren")
-	p m.compare("pattren")
-	p m.comparer("pattren")
-	p m.compare("pattn")
-	p m.comparer("pattn")
-	p m.search("abcpattrendef")
-	p m.searchr("abcpattrendef")
+    p m.match("pattren")
+    p m.match(["pattren","parent"])
+    p m.matchr("pattren")
+    p m.compare("pattren")
+    p m.comparer("pattren")
+    p m.compare("pattn")
+    p m.comparer("pattn")
+    p m.search("abcpattrendef")
+    p m.searchr("abcpattrendef")
 
 DESCRIPTION
 
@@ -52,15 +52,15 @@ is given it has to be set with Amatch#pattern before matching.
 
 METHODS
 
-- Amatch#pattern	pattern string to match against
+- Amatch#pattern    pattern string to match against
 
-- Amatch#subw		weight of one substitution (type Fixnum)
+- Amatch#subw        weight of one substitution (type Fixnum)
 
-- Amatch#delw		weight of one deletion (type Fixnum)
+- Amatch#delw        weight of one deletion (type Fixnum)
 
-- Amatch#insw		weight of one insertion (type Fixnum)
+- Amatch#insw        weight of one insertion (type Fixnum)
 
-- Amatch#resetw		resets all weights to their default values (=1).
+- Amatch#resetw        resets all weights to their default values (=1).
 
 The following methods require the parameter 'strings'. This parameter can be
 of type String or Array of Strings. The method executes the matching operation
@@ -110,7 +110,7 @@ Florian Frank <flori@ping.de>
 
 COPYRIGHT
 
-Copyright (c) 2002	Florian Frank <flori@ping.de>
+Copyright (c) 2002        Florian Frank <flori@ping.de>
 
 This is free software; you can redistribute it and/or modify it under the
 terms of the GNU General Public License Version 2 as published by the Free
