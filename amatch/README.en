@@ -10,6 +10,10 @@ Just type into the command line as root:
 install.rb was taken from Minero Aoki's setup project:
 	http://www.ruby-lang.org/en/raa-list.rhtml?name=setup.rb
 
+If you have installed rake (rake.rubyforge.org), you can also type:
+
+# rake install
+
 Documentation
 =============
 

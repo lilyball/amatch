@@ -97,4 +97,6 @@ Rake::GemPackageTask.new(spec) do |pkg|
     pkg.need_tar = true
     pkg.package_files += PKG_FILES
 end
+
+task :release => [ :clean, :compile, :package ]
     # vim: set et sw=4 ts=4:
