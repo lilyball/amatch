@@ -89,7 +89,7 @@ EOF
 
     s.author = "Florian Frank"
     s.email = "flori@ping.de"
-    s.homepage = "http://XXX"
+    s.homepage = "http://amatch.rubyforge.org"
     s.rubyforge_project = "amatch"
 end
 
