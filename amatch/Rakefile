@@ -9,13 +9,15 @@ include Config
 
 PKG_NAME = 'amatch'
 PKG_VERSION = File.read('VERSION').chomp
-PKG_FILES = Dir.glob("**/*").delete_if {|item| item.include?("CVS")}
+PKG_FILES = Dir.glob("**/*").delete_if {|item|
+    item.include?("CVS") or item.include?("pkg")
+}
 
 task :default => [:test]
 
 desc "Run unit tests"
 task(:test => [:compile]) do
-    ruby %{-Iext test.rb}
+    ruby %{-Iext tests/test.rb}
 end
 
 desc "Compiling library"
@@ -77,10 +79,11 @@ EOF
 
     s.has_rdoc = true
     #s.extra_rdoc_files = rd.rdoc_files.reject { |fn| fn =~ /\.rb$/ }.to_a
-    s.rdoc_options <<
-      '--title' <<  'Rake -- Ruby Make' <<
-      '--main' << 'README' <<
-      '--line-numbers'
+    #s.rdoc_options <<
+    #  '--title' <<  'Rake -- Ruby Make' <<
+    #  '--main' << 'README' <<
+    #  '--line-numbers'
+    s.test_files << 'tests/test.rb'
 
     #### Author and project details.
 
