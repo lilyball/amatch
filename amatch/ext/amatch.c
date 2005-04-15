@@ -1,5 +1,26 @@
 #include "ruby.h"
 
+#define LEVENSHTEIN_EACH(mode)                                              \
+int i;                                                                      \
+VALUE result;                                                               \
+VALUE pattern = rb_iv_get(self, "@pattern");                                \
+Check_Type(pattern, T_STRING);                                              \
+result = rb_ary_new2(argc);                                                 \
+if (argc == 0)                                                              \
+    rb_raise(rb_eArgError, "wrong number of arguments (%d for 1)", argc);   \
+if (argc == 1)                                                              \
+    return compute_levenshtein_distance(self, pattern, argv[0], mode);      \
+for (i = 0; i < argc; i++) {                                                \
+    if (TYPE(argv[i]) != T_STRING) {                                        \
+        rb_raise(rb_eTypeError,                                             \
+            "argument #%d has to be a string (%s given)", i + 1,            \
+            NIL_P(argv[i]) ? "NilClass" : rb_class2name(CLASS_OF(argv[i])));\
+    }                                                                       \
+    rb_ary_push(result,                                                     \
+        compute_levenshtein_distance(self, pattern, argv[i], mode));        \
+}                                                                           \
+return result;
+
 static VALUE cAmatch;
 
 /*
@@ -64,7 +85,7 @@ vector_last(v)
 }
 
 /*
- * Edit distances are calculated here
+ * Levenshtein edit distances are calculated here:
  */
 
 enum { MATCH = 1, MATCHR, SEARCH, SEARCHR, COMPARE, COMPARER };
@@ -82,12 +103,12 @@ static int weight2int(weight, name)
 }
 
 static VALUE
-calculate_distance (self, string, mode)
+compute_levenshtein_distance(self, pattern, string, mode)
     VALUE self;
+    VALUE pattern;
     VALUE string;
     char mode;
 {
-    VALUE pattern, tmp;
     static VALUE result;
     int pattern_len, string_len;
     char *pattern_ptr, *string_ptr;
@@ -99,8 +120,6 @@ calculate_distance (self, string, mode)
     string_ptr = RSTRING(string)->ptr;
     string_len = RSTRING(string)->len;
 
-    pattern = rb_iv_get(self, "@pattern");
-    Check_Type(pattern, T_STRING);
     pattern_ptr = RSTRING(pattern)->ptr;
     pattern_len = RSTRING(pattern)->len;
 
@@ -121,7 +140,7 @@ calculate_distance (self, string, mode)
             for (i = 0; i <= v[0]->len; i++) v[0]->ptr[i] = 0;
             break;
         default:
-            rb_raise(rb_eFatal, "unknown mode in calculate_distance");
+            rb_raise(rb_eFatal, "unknown mode in compute_levenshtein_distance");
     }
 
     v[1] = vector_new(string_len);
@@ -163,40 +182,11 @@ calculate_distance (self, string, mode)
                 vector_last(v[c]) / pattern_len);
             break;
         default:
-            rb_raise(rb_eFatal, "unknown mode in calculate_distance");
+            rb_raise(rb_eFatal, "unknown mode in compute_levenshtein_distance");
     }
     vector_destroy(v[0]);
     vector_destroy(v[1]);
     return result;
-}
-
-static VALUE
-handle_strings(self, strings, mode)
-    VALUE self;
-    VALUE strings;
-    char mode;
-{
-    if (TYPE(strings) == T_ARRAY) {
-        int i;
-        VALUE result = rb_ary_new2(RARRAY(strings)->len);
-        for (i = 0; i < RARRAY(strings)->len; i++) {
-            VALUE string = rb_ary_entry(strings, i);
-            if (TYPE(string) != T_STRING) {
-                rb_raise(rb_eTypeError,
-                    "array has to contain only strings (%s given)",
-                    NIL_P(string) ? "NilClass" :
-                                    rb_class2name(CLASS_OF(string)));
-            }
-            rb_ary_push(result, calculate_distance(self, string, mode));
-        }
-        return result;
-    } else if (TYPE(strings) == T_STRING) {
-        return calculate_distance(self, strings, mode);
-    } else {
-        rb_raise(rb_eTypeError,
-            "value of strings needs to be string or array (%s given)",
-            NIL_P(strings) ? "NilClass" : rb_class2name(CLASS_OF(strings)));
-    }
 }
 
 /*
@@ -227,65 +217,69 @@ rb_amatch_initialize(self, pattern)
 }
 
 static VALUE
-rb_amatch_pattern_is(self, pattern)
+rb_amatch_match(argc, argv, self)
+    int argc;
+    VALUE *argv;
     VALUE self;
-    VALUE pattern;
 {
-    Check_Type(pattern, T_STRING);
-    rb_iv_set(self, "@pattern", pattern);
+    LEVENSHTEIN_EACH(MATCH);
+}
 
-    return pattern;
+static VALUE
+rb_amatch_matchr(argc, argv, self)
+    int argc;
+    VALUE *argv;
+    VALUE self;
+{
+    LEVENSHTEIN_EACH(MATCHR);
+}
+
+static VALUE
+rb_amatch_compare(argc, argv, self)
+    int argc;
+    VALUE *argv;
+    VALUE self;
+{
+    LEVENSHTEIN_EACH(COMPARE);
+}
+
+static VALUE
+rb_amatch_comparer(argc, argv, self)
+    int argc;
+    VALUE *argv;
+    VALUE self;
+{
+    LEVENSHTEIN_EACH(COMPARER);
 }
 
 
 static VALUE
-rb_amatch_match(self, strings)
+rb_amatch_search(argc, argv, self)
+    int argc;
+    VALUE *argv;
     VALUE self;
-    VALUE strings; 
 {
-    return handle_strings(self, strings, MATCH);
+    LEVENSHTEIN_EACH(SEARCH);
 }
 
 static VALUE
-rb_amatch_matchr(self, strings)
+rb_amatch_searchr(argc, argv, self)
+    int argc;
+    VALUE *argv;
     VALUE self;
-    VALUE strings;
 {
-    return handle_strings(self, strings, MATCHR);
+    LEVENSHTEIN_EACH(SEARCHR);
 }
 
 static VALUE
-rb_amatch_compare(self, strings)
+rb_amatch_pair_distance(argc, argv, self)
+    int argc;
+    VALUE *argv;
     VALUE self;
-    VALUE strings;
 {
-    return handle_strings(self, strings, COMPARE);
+    return Qnil;
 }
 
-static VALUE
-rb_amatch_comparer(self, strings)
-    VALUE self;
-    VALUE strings;
-{
-    return handle_strings(self, strings, COMPARER);
-}
-
-
-static VALUE
-rb_amatch_search(self, strings)
-    VALUE self;
-    VALUE strings;
-{
-    return handle_strings(self, strings, SEARCH);
-}
-
-static VALUE
-rb_amatch_searchr(self, strings)
-    VALUE self;
-    VALUE strings;
-{
-    return handle_strings(self, strings, SEARCHR);
-}
 
 void
 Init_amatch()
@@ -299,14 +293,14 @@ Init_amatch()
     rb_define_attr(cAmatch, "insw", 1, 1);
     rb_define_method(cAmatch, "resetw", rb_amatch_resetw, 0);
 
-    rb_define_method(cAmatch, "pattern=", rb_amatch_pattern_is, 1);
-    rb_define_attr(cAmatch, "pattern", 1, 0);
+    rb_define_attr(cAmatch, "pattern", 1, 1);
 
-    rb_define_method(cAmatch, "match", rb_amatch_match, 1);
-    rb_define_method(cAmatch, "matchr", rb_amatch_matchr, 1);
-    rb_define_method(cAmatch, "compare", rb_amatch_compare, 1);
-    rb_define_method(cAmatch, "comparer", rb_amatch_comparer, 1);
-    rb_define_method(cAmatch, "search", rb_amatch_search, 1);
-    rb_define_method(cAmatch, "searchr", rb_amatch_searchr, 1);
+    rb_define_method(cAmatch, "match", rb_amatch_match, -1);
+    rb_define_method(cAmatch, "matchr", rb_amatch_matchr, -1);
+    rb_define_method(cAmatch, "compare", rb_amatch_compare, -1);
+    rb_define_method(cAmatch, "comparer", rb_amatch_comparer, -1);
+    rb_define_method(cAmatch, "search", rb_amatch_search, -1);
+    rb_define_method(cAmatch, "searchr", rb_amatch_searchr, -1);
+    rb_define_method(cAmatch, "pair_distance", rb_amatch_pair_distance, -1);
 }
     /* vim: set et cin sw=4 ts=4: */

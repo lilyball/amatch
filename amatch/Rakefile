@@ -10,93 +10,93 @@ include Config
 PKG_NAME = 'amatch'
 PKG_VERSION = File.read('VERSION').chomp
 PKG_FILES = Dir.glob("**/*").delete_if {|item|
-    item.include?("CVS") or item.include?("pkg")
+  item.include?("CVS") or item.include?("pkg")
 }
 
 task :default => [:test]
 
 desc "Run unit tests"
 task(:test => [:compile]) do
-    ruby %{-Iext tests/test.rb}
+  ruby %{-Iext tests/test.rb}
 end
 
 desc "Compiling library"
 task :compile do
-    cd 'ext'  do
-        ruby %{extconf.rb}
-        system "make"
-    end
+  cd 'ext'  do
+    ruby %{extconf.rb}
+    system "make"
+  end
 end
 
 desc "Installing library"
 task(:install => [:test]) do
-    src, = Dir['ext/amatch.*'].reject { |x| /\.[co]$/.match x }
-    filename = File.basename(src)
-    dst = File.join(CONFIG["sitelibdir"], filename)
-    install(src, dst, :verbose => true)
+  src, = Dir['ext/amatch.*'].reject { |x| /\.[co]$/.match x }
+  filename = File.basename(src)
+  dst = File.join(CONFIG["sitelibdir"], filename)
+  install(src, dst, :verbose => true)
 end
 
 task :clean do
-    cd 'ext'  do
-        system "make distclean" if File.exist?('Makefile')
-    end
+  cd 'ext'  do
+    system "make distclean" if File.exist?('Makefile')
+  end
 end
 
 spec = Gem::Specification.new do |s|
 
-    #### Basic information.
+  #### Basic information.
 
-    s.name = 'amatch'
-    s.version = PKG_VERSION
-    s.summary = "Approximate String Matching library"
-    s.description = <<EOF
+  s.name = 'amatch'
+  s.version = PKG_VERSION
+  s.summary = "Approximate String Matching library"
+  s.description = <<EOF
 Amatch is a library for approximate string matching and searching using
 a dynamic programming algorithm to compute the Levenshtein distance
 between strings.
 EOF
 
-    #### Dependencies and requirements.
+  #### Dependencies and requirements.
 
-    #s.add_dependency('log4r', '> 1.0.4')
-    #s.requirements << ""
+  #s.add_dependency('log4r', '> 1.0.4')
+  #s.requirements << ""
 
-    s.files = PKG_FILES
+  s.files = PKG_FILES
 
-    #### C code extensions.
+  #### C code extensions.
 
-    s.extensions << "ext/extconf.rb"
+  s.extensions << "ext/extconf.rb"
 
-    #### Load-time details: library and application (you will need one or both).
+  #### Load-time details: library and application (you will need one or both).
 
-    s.require_path = 'lib'                         # Use these for libraries.
-    s.autorequire = 'amatch'
+  s.require_path = 'lib'                         # Use these for libraries.
+  s.autorequire = 'amatch'
 
-    s.bindir = "bin"                               # Use these for applications.
-    s.executables = ["agrep.rb"]
-    s.default_executable = "agrep.rb"
+  s.bindir = "bin"                               # Use these for applications.
+  s.executables = ["agrep.rb"]
+  s.default_executable = "agrep.rb"
 
-    #### Documentation and testing.
+  #### Documentation and testing.
 
-    s.has_rdoc = true
-    #s.extra_rdoc_files = rd.rdoc_files.reject { |fn| fn =~ /\.rb$/ }.to_a
-    #s.rdoc_options <<
-    #  '--title' <<  'Rake -- Ruby Make' <<
-    #  '--main' << 'README' <<
-    #  '--line-numbers'
-    s.test_files << 'tests/test.rb'
+  s.has_rdoc = true
+  #s.extra_rdoc_files = rd.rdoc_files.reject { |fn| fn =~ /\.rb$/ }.to_a
+  #s.rdoc_options <<
+  #  '--title' <<  'Rake -- Ruby Make' <<
+  #  '--main' << 'README' <<
+  #  '--line-numbers'
+  s.test_files << 'tests/test.rb'
 
-    #### Author and project details.
+  #### Author and project details.
 
-    s.author = "Florian Frank"
-    s.email = "flori@ping.de"
-    s.homepage = "http://amatch.rubyforge.org"
-    s.rubyforge_project = "amatch"
+  s.author = "Florian Frank"
+  s.email = "flori@ping.de"
+  s.homepage = "http://amatch.rubyforge.org"
+  s.rubyforge_project = "amatch"
 end
 
 Rake::GemPackageTask.new(spec) do |pkg|
-    pkg.need_tar = true
-    pkg.package_files += PKG_FILES
+  pkg.need_tar = true
+  pkg.package_files += PKG_FILES
 end
 
 task :release => [ :clean, :package ]
-    # vim: set et sw=4 ts=4:
+  # vim: set et sw=2 ts=2:
