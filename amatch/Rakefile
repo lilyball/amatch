@@ -38,7 +38,7 @@ end
 
 task :clean do
     cd 'ext'  do
-        system "make distclean"
+        system "make distclean" if File.exist?('Makefile')
     end
 end
 
@@ -51,7 +51,7 @@ spec = Gem::Specification.new do |s|
     s.summary = "Approximate String Matching library"
     s.description = <<EOF
 Amatch is a library for approximate string matching and searching using
-a dynamic programming algorithm to compute the Levenstein distance
+a dynamic programming algorithm to compute the Levenshtein distance
 between strings.
 EOF
 
@@ -98,5 +98,5 @@ Rake::GemPackageTask.new(spec) do |pkg|
     pkg.package_files += PKG_FILES
 end
 
-task :release => [ :clean, :compile, :package ]
+task :release => [ :clean, :package ]
     # vim: set et sw=4 ts=4:
