@@ -67,7 +67,7 @@ typedef struct AmatchStruct {
     int     delw;
     int     insw;
     char    *pattern;
-    char    pattern_length;
+    char    pattern_len;
     char    **pairs;
 } Amatch;
 
@@ -128,7 +128,7 @@ amatch_compute_levenshtein_distance(amatch, string, mode)
     }
 
     v[1] = Vector_new(string_len);
-    for (i = 1; i <= amatch->pattern_length; i++) {
+    for (i = 1; i <= amatch->pattern_len; i++) {
         c = i % 2;                /* current row */
         p = (i - 1) % 2;          /* previous row */
         v[c]->ptr[0] = i * amatch->delw;    /* first column */
@@ -151,27 +151,27 @@ amatch_compute_levenshtein_distance(amatch, string, mode)
             break;
         case MATCHR:
             result = rb_float_new(
-                (double) vector_last(v[c]) / amatch->pattern_length
+                (double) vector_last(v[c]) / amatch->pattern_len
             );
             break;
         case SEARCH:
             tmpi = vector_minimum(v[c]);
-            result = tmpi < 0 ? INT2FIX(amatch->pattern_length) : INT2FIX(tmpi);
+            result = tmpi < 0 ? INT2FIX(amatch->pattern_len) : INT2FIX(tmpi);
             break;
         case SEARCHR:
             tmpi = vector_minimum(v[c]);
             result = rb_float_new(
-                tmpi < 0 ? 1.0 : (double) tmpi / amatch->pattern_length
+                tmpi < 0 ? 1.0 : (double) tmpi / amatch->pattern_len
             );
             break;
         case COMPARE:
-            result = INT2FIX((string_len < amatch->pattern_length ? -1 : 1) *
+            result = INT2FIX((string_len < amatch->pattern_len ? -1 : 1) *
                 vector_last(v[c]));
             break;
         case COMPARER:
             result = rb_float_new((double)
-                (string_len < amatch->pattern_length ? -1 : 1)     *
-                vector_last(v[c]) / amatch->pattern_length);
+                (string_len < amatch->pattern_len ? -1 : 1)     *
+                vector_last(v[c]) / amatch->pattern_len);
             break;
         default:
             rb_raise(rb_eFatal,
@@ -209,9 +209,9 @@ amatch_compute_pair_distance(amatch, string)
 
 static void rb_amatch_free(Amatch *amatch)
 {
-    free(amatch->pattern);
+    xfree(amatch->pattern);
     MEMZERO(amatch, Amatch, 1);
-    free(amatch);
+    xfree(amatch);
 }
 
 static VALUE
@@ -227,10 +227,10 @@ void amatch_pattern_set(amatch, pattern)
     VALUE pattern;
 {
     Check_Type(pattern, T_STRING);
-    free(amatch->pattern);
-    amatch->pattern = ALLOC_N(char, RSTRING(pattern)->len);
+    xfree(amatch->pattern);
+    amatch->pattern_len = RSTRING(pattern)->len;
+    amatch->pattern = ALLOC_N(char, amatch->pattern_len);
     MEMCPY(amatch->pattern, RSTRING(pattern)->ptr, char, RSTRING(pattern)->len);
-    amatch->pattern_length = RSTRING(pattern)->len;
 }
   
 VALUE
@@ -238,7 +238,7 @@ rb_amatch_pattern(self)
     VALUE self;
 {
     GET_AMATCH;
-    return rb_str_new(amatch->pattern, amatch->pattern_length);
+    return rb_str_new(amatch->pattern, amatch->pattern_len);
 }
 
 VALUE
