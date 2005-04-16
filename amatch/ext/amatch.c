@@ -31,50 +31,32 @@ rb_amatch_ ## name ## _set(self, value)                             \
     return Qnil;                                                    \
 }
 
-#define LEVENSHTEIN_EACH(mode)                                              \
-int i;                                                                      \
-GET_AMATCH;                                                                 \
-VALUE result;                                                               \
-result = rb_ary_new2(argc);                                                 \
-if (argc == 0)                                                              \
-    rb_raise(rb_eArgError, "wrong number of arguments (%d for 1)", argc);   \
-if (argc == 1)                                                              \
-    return amatch_compute_levenshtein_distance(amatch, argv[0], mode);      \
-for (i = 0; i < argc; i++) {                                                \
-    if (TYPE(argv[i]) != T_STRING) {                                        \
-        rb_raise(rb_eTypeError,                                             \
-            "argument #%d has to be a string (%s given)", i + 1,            \
-            NIL_P(argv[i]) ? "NilClass" : rb_class2name(CLASS_OF(argv[i])));\
-    }                                                                       \
-    rb_ary_push(result,                                                     \
-        amatch_compute_levenshtein_distance(amatch, argv[i], mode));        \
-}                                                                           \
-return result;
-
-static VALUE rb_cAmatch;
-
-typedef struct AmatchStruct {
-    int     subw;
-    int     delw;
-    int     insw;
-    char    *pattern;
-    char    pattern_length;
-} Amatch;
-
-static Amatch *Amatch_allocate()
-{
-    Amatch *amatch = ALLOC(Amatch);
-    MEMZERO(amatch, Amatch, 1);
-    return amatch;
-}
-
-void
-amatch_resetw(amatch)
-    Amatch *amatch;
-{
-    amatch->subw    = 1;
-    amatch->delw    = 1;
-    amatch->insw    = 1;
+#define DEF_LEVENSHTEIN(name, mode)                                          \
+static VALUE                                                                 \
+rb_amatch_ ## name(argc, argv, self)                                         \
+    int argc;                                                                \
+    VALUE *argv;                                                             \
+    VALUE self;                                                              \
+{                                                                            \
+    int i;                                                                   \
+    GET_AMATCH;                                                              \
+    VALUE result;                                                            \
+    result = rb_ary_new2(argc);                                              \
+    if (argc == 0)                                                           \
+        rb_raise(rb_eArgError, "wrong number of arguments (%d for 1)", argc);\
+    if (argc == 1)                                                           \
+        return amatch_compute_levenshtein_distance(amatch, argv[0], mode);   \
+    for (i = 0; i < argc; i++) {                                             \
+        if (TYPE(argv[i]) != T_STRING) {                                     \
+            rb_raise(rb_eTypeError,                                          \
+                "argument #%d has to be a string (%s given)", i + 1,         \
+                NIL_P(argv[i]) ?                                             \
+                    "NilClass" : rb_class2name(CLASS_OF(argv[i])));          \
+        }                                                                    \
+        rb_ary_push(result,                                                  \
+            amatch_compute_levenshtein_distance(amatch, argv[i], mode));     \
+    }                                                                        \
+    return result;                                                           \
 }
 
 /*
@@ -138,8 +120,35 @@ vector_last(v)
     return v->ptr[v->len];
 }
 
+
+static VALUE rb_cAmatch;
+
+typedef struct AmatchStruct {
+    int     subw;
+    int     delw;
+    int     insw;
+    char    *pattern;
+    char    pattern_length;
+} Amatch;
+
+static Amatch *Amatch_allocate()
+{
+    Amatch *amatch = ALLOC(Amatch);
+    MEMZERO(amatch, Amatch, 1);
+    return amatch;
+}
+
+void
+amatch_resetw(amatch)
+    Amatch *amatch;
+{
+    amatch->subw    = 1;
+    amatch->delw    = 1;
+    amatch->insw    = 1;
+}
+
 /*
- * Levenshtein edit distances are calculated here:
+ * Levenshtein edit distances are computed here:
  */
 
 enum { MATCH = 1, MATCHR, SEARCH, SEARCHR, COMPARE, COMPARER };
@@ -201,7 +210,9 @@ amatch_compute_levenshtein_distance(amatch, string, mode)
             result = INT2FIX(vector_last(v[c]));
             break;
         case MATCHR:
-            result = rb_float_new((double) vector_last(v[c]) / amatch->pattern_length);
+            result = rb_float_new(
+                (double) vector_last(v[c]) / amatch->pattern_length
+            );
             break;
         case SEARCH:
             tmpi = vector_minimum(v[c]);
@@ -209,7 +220,9 @@ amatch_compute_levenshtein_distance(amatch, string, mode)
             break;
         case SEARCHR:
             tmpi = vector_minimum(v[c]);
-            result = rb_float_new( tmpi < 0 ? 1.0 : (double) tmpi / amatch->pattern_length);
+            result = rb_float_new(
+                tmpi < 0 ? 1.0 : (double) tmpi / amatch->pattern_length
+            );
             break;
         case COMPARE:
             result = INT2FIX((string_len < amatch->pattern_length ? -1 : 1) *
@@ -304,60 +317,12 @@ rb_amatch_initialize(self, pattern)
     return self;
 }
 
-static VALUE
-rb_amatch_match(argc, argv, self)
-    int argc;
-    VALUE *argv;
-    VALUE self;
-{
-    LEVENSHTEIN_EACH(MATCH);
-}
-
-static VALUE
-rb_amatch_matchr(argc, argv, self)
-    int argc;
-    VALUE *argv;
-    VALUE self;
-{
-    LEVENSHTEIN_EACH(MATCHR);
-}
-
-static VALUE
-rb_amatch_compare(argc, argv, self)
-    int argc;
-    VALUE *argv;
-    VALUE self;
-{
-    LEVENSHTEIN_EACH(COMPARE);
-}
-
-static VALUE
-rb_amatch_comparer(argc, argv, self)
-    int argc;
-    VALUE *argv;
-    VALUE self;
-{
-    LEVENSHTEIN_EACH(COMPARER);
-}
-
-
-static VALUE
-rb_amatch_search(argc, argv, self)
-    int argc;
-    VALUE *argv;
-    VALUE self;
-{
-    LEVENSHTEIN_EACH(SEARCH);
-}
-
-static VALUE
-rb_amatch_searchr(argc, argv, self)
-    int argc;
-    VALUE *argv;
-    VALUE self;
-{
-    LEVENSHTEIN_EACH(SEARCHR);
-}
+DEF_LEVENSHTEIN(match, MATCH)
+DEF_LEVENSHTEIN(matchr, MATCHR)
+DEF_LEVENSHTEIN(compare, COMPARE)
+DEF_LEVENSHTEIN(comparer, COMPARER)
+DEF_LEVENSHTEIN(search, SEARCH)
+DEF_LEVENSHTEIN(searchr, SEARCHR)
 
 static VALUE
 rb_amatch_pair_distance(argc, argv, self)
