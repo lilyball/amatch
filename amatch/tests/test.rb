@@ -78,17 +78,13 @@ class TC_Levenshtein < Test::Unit::TestCase
     assert_equal 1, @matcher.subw
     assert_equal 1, @matcher.insw
     assert_equal 1, @matcher.delw
-    @matcher.pattern = :something
-    assert_raises(TypeError) { @matcher.match('anything') }
+    assert_raises(TypeError) { @matcher.pattern = :something }
     @matcher.pattern = 'test'
-    @matcher.subw = :something
-    assert_raises(TypeError) { @matcher.match('anything') }
+    assert_raises(TypeError) { @matcher.subw = :something }
     @matcher.subw = 1
-    @matcher.insw = :something
-    assert_raises(TypeError) { @matcher.match('anything') }
+    assert_raises(TypeError) { @matcher.insw = :something }
     @matcher.insw = 1
-    @matcher.delw = :something
-    assert_raises(TypeError) { @matcher.match('anything') }
+    assert_raises(TypeError) { @matcher.delw = :something }
     @matcher.delw = 1
     assert_equal 0, @matcher.match('test')
   end
