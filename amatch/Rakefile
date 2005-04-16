@@ -17,7 +17,7 @@ task :default => [:test]
 
 desc "Run unit tests"
 task(:test => [:compile]) do
-  ruby %{-Iext tests/test.rb}
+  ruby %{-Iext tests/test_levensthein.rb}
 end
 
 desc "Compiling library"
