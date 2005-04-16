@@ -1,4 +1,5 @@
 #include "ruby.h"
+#include "vector.h"
 
 /* Macromania goes here: */
 
@@ -59,68 +60,6 @@ rb_amatch_ ## name(argc, argv, self)                                         \
     return result;                                                           \
 }
 
-/*
- * Vector stuff
- */
-
-typedef struct {
-    int *ptr;
-    int len;
-} vector;
-
-static vector *
-vector_new(len)
-    int len;
-{
-    vector *v;
-    v = ALLOC(vector);
-    if (v == NULL) rb_raise(rb_eNoMemError, "couldn't malloc vector");
-    v->ptr = ALLOC_N(int, len + 1);
-    if (v->ptr == NULL) rb_raise(rb_eNoMemError, "couldn't malloc vector data");
-    v->len = len;
-    return v;
-}
-
-static void
-vector_print(v)
-    vector *v;
-{
-    int i;
-    for(i = 0; i < v->len; i++) printf("%d", v->ptr[i]);
-    puts("");
-}
-
-static void
-vector_destroy(v)
-    vector *v;
-{
-    xfree(v->ptr);
-    xfree(v);
-}
-
-static int
-vector_minimum(v)
-    vector *v;
-{
-    int i;
-    int min;
-
-    if (v->len == 0) return -1;
-    min = v->ptr[0];
-    for (i = 1; i <= v->len; i++) {
-        if (min > v->ptr[i]) min = v->ptr[i];
-    }
-    return min;
-}
-
-static int
-vector_last(v)
-    vector *v;
-{
-    return v->ptr[v->len];
-}
-
-
 static VALUE rb_cAmatch;
 
 typedef struct AmatchStruct {
@@ -129,6 +68,7 @@ typedef struct AmatchStruct {
     int     insw;
     char    *pattern;
     char    pattern_length;
+    char    **pairs;
 } Amatch;
 
 static Amatch *Amatch_allocate()
@@ -162,7 +102,7 @@ amatch_compute_levenshtein_distance(amatch, string, mode)
     static VALUE result;
     int string_len;
     char *string_ptr;
-    vector *v[2];
+    Vector *v[2];
     int weight,i, j, tmpi;
     int c = 0, p = 1;
 
@@ -170,7 +110,7 @@ amatch_compute_levenshtein_distance(amatch, string, mode)
     string_ptr = RSTRING(string)->ptr;
     string_len = RSTRING(string)->len;
 
-    v[0] = vector_new(string_len);
+    v[0] = Vector_new(string_len);
     switch (mode) {
         case MATCH:
         case MATCHR:
@@ -187,7 +127,7 @@ amatch_compute_levenshtein_distance(amatch, string, mode)
                 "unknown mode in amatch_compute_levenshtein_distance");
     }
 
-    v[1] = vector_new(string_len);
+    v[1] = Vector_new(string_len);
     for (i = 1; i <= amatch->pattern_length; i++) {
         c = i % 2;                /* current row */
         p = (i - 1) % 2;          /* previous row */
@@ -239,6 +179,27 @@ amatch_compute_levenshtein_distance(amatch, string, mode)
     }
     vector_destroy(v[0]);
     vector_destroy(v[1]);
+    return result;
+}
+
+static VALUE
+amatch_compute_pair_distance(amatch, string)
+    Amatch *amatch;
+    VALUE string;
+{
+    static VALUE result;
+    int string_len;
+    char *string_ptr;
+    Vector *v[2];
+    int weight,i, j, tmpi;
+    int c = 0, p = 1;
+
+    Check_Type(string, T_STRING);
+    string_ptr = RSTRING(string)->ptr;
+    string_len = RSTRING(string)->len;
+
+    if (amatch->pairs) {
+    }
     return result;
 }
 
@@ -329,8 +290,25 @@ rb_amatch_pair_distance(argc, argv, self)
     int argc;
     VALUE *argv;
     VALUE self;
-{
-    return Qnil;
+{                                                                            
+    int i;                                                                   
+    GET_AMATCH;                                                              
+    VALUE result;                                                            
+    result = rb_ary_new2(argc);                                              
+    if (argc == 0)                                                           
+        rb_raise(rb_eArgError, "wrong number of arguments (%d for 1)", argc);
+    if (argc == 1)                                                           
+        return amatch_compute_pair_distance(amatch, argv[0]);   
+    for (i = 0; i < argc; i++) {                                             
+        if (TYPE(argv[i]) != T_STRING) {                                     
+            rb_raise(rb_eTypeError,                                          
+                "argument #%d has to be a string (%s given)", i + 1,         
+                NIL_P(argv[i]) ?                                             
+                    "NilClass" : rb_class2name(CLASS_OF(argv[i])));          
+        }                                                                    
+        rb_ary_push(result, amatch_compute_pair_distance(amatch, argv[i]));     
+    }                                                                        
+    return result;                                                           
 }
 
 void
