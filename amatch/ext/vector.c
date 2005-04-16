@@ -1,5 +1,4 @@
 #include "vector.h"
-#include "ruby.h"
 
 Vector *Vector_new(int len)
 {
@@ -39,3 +38,4 @@ int vector_minimum(Vector *v) {
 int vector_last(Vector *v) {
     return v->ptr[v->len];
 }
+  /* vim: set et cindent sw=4 ts=4: */ 
