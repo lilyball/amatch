@@ -280,7 +280,6 @@ rb_amatch_pair_distance(argc, argv, self)
     return Qnil;
 }
 
-
 void
 Init_amatch()
 {
