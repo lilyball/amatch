@@ -17,14 +17,14 @@ task :default => [:test]
 
 desc "Run unit tests"
 task(:test => [:compile]) do
-  ruby %{-Iext tests/test_levensthein.rb}
+  ruby %{-Iext tests/test_levenshtein.rb}
 end
 
 desc "Compiling library"
 task :compile do
   cd 'ext'  do
     ruby %{extconf.rb}
-    system "make"
+    sh "make"
   end
 end
 
@@ -38,7 +38,7 @@ end
 
 task :clean do
   cd 'ext'  do
-    system "make distclean" if File.exist?('Makefile')
+    sh "make distclean" if File.exist?('Makefile')
   end
 end
 
