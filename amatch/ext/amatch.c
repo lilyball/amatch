@@ -1,6 +1,10 @@
 #include "ruby.h"
 #include "vector.h"
 
+static VALUE rb_cAmatch;
+static ID id_split;
+
+
 /* Macromania goes here: */
 
 #define GET_AMATCH                          \
@@ -42,11 +46,11 @@ rb_amatch_ ## name(argc, argv, self)                                         \
     int i;                                                                   \
     GET_AMATCH;                                                              \
     VALUE result;                                                            \
-    result = rb_ary_new2(argc);                                              \
     if (argc == 0)                                                           \
         rb_raise(rb_eArgError, "wrong number of arguments (%d for 1)", argc);\
     if (argc == 1)                                                           \
         return amatch_compute_levenshtein_distance(amatch, argv[0], mode);   \
+    result = rb_ary_new2(argc);                                              \
     for (i = 0; i < argc; i++) {                                             \
         if (TYPE(argv[i]) != T_STRING) {                                     \
             rb_raise(rb_eTypeError,                                          \
@@ -60,15 +64,12 @@ rb_amatch_ ## name(argc, argv, self)                                         \
     return result;                                                           \
 }
 
-static VALUE rb_cAmatch;
-
 typedef struct AmatchStruct {
     int     subw;
     int     delw;
     int     insw;
     char    *pattern;
     char    pattern_len;
-    char    **pairs;
 } Amatch;
 
 static Amatch *Amatch_allocate()
@@ -99,7 +100,7 @@ amatch_compute_levenshtein_distance(amatch, string, mode)
     VALUE string;
     char mode;
 {
-    static VALUE result;
+    VALUE result;
     int string_len;
     char *string_ptr;
     Vector *v[2];
@@ -183,24 +184,17 @@ amatch_compute_levenshtein_distance(amatch, string, mode)
 }
 
 static VALUE
-amatch_compute_pair_distance(amatch, string)
-    Amatch *amatch;
-    VALUE string;
+amatch_compute_pair_distance(Amatch *amatch, VALUE regexp, VALUE string)
 {
-    static VALUE result;
-    int string_len;
-    char *string_ptr;
-    Vector *v[2];
-    int weight,i, j, tmpi;
-    int c = 0, p = 1;
-
+    VALUE result;
+    VALUE tokens, pt;
+    Pair *pattern_array, *pair_array;
+    
     Check_Type(string, T_STRING);
-    string_ptr = RSTRING(string)->ptr;
-    string_len = RSTRING(string)->len;
-
-    if (amatch->pairs) {
-    }
-    return result;
+    tokens = rb_funcall(string, id_split, 1, regexp);
+    pair_array = PairArray_new(tokens);
+    return rb_float_new(pair_array_match(pattern_array, pair_array));
+//return result;
 }
 
 /*
@@ -292,21 +286,25 @@ rb_amatch_pair_distance(argc, argv, self)
     VALUE self;
 {                                                                            
     int i;                                                                   
-    GET_AMATCH;                                                              
+    GET_AMATCH;
     VALUE result;                                                            
-    result = rb_ary_new2(argc);                                              
-    if (argc == 0)                                                           
-        rb_raise(rb_eArgError, "wrong number of arguments (%d for 1)", argc);
-    if (argc == 1)                                                           
+
+    if (argc < 2)
+        rb_raise(rb_eArgError, "wrong number of arguments (%d for 2)", argc);
+    /*
+    if (argc == 2)                                                           
         return amatch_compute_pair_distance(amatch, argv[0]);   
-    for (i = 0; i < argc; i++) {                                             
+        */
+    result = rb_ary_new2(argc - 1);
+    for (i = 1; i < argc; i++) {                                             
         if (TYPE(argv[i]) != T_STRING) {                                     
             rb_raise(rb_eTypeError,                                          
                 "argument #%d has to be a string (%s given)", i + 1,         
                 NIL_P(argv[i]) ?                                             
                     "NilClass" : rb_class2name(CLASS_OF(argv[i])));          
         }                                                                    
-        rb_ary_push(result, amatch_compute_pair_distance(amatch, argv[i]));     
+        rb_ary_push(result,
+            amatch_compute_pair_distance(amatch, argv[0], argv[i]));
     }                                                                        
     return result;                                                           
 }
@@ -331,5 +329,6 @@ Init_amatch()
     rb_define_method(rb_cAmatch, "search", rb_amatch_search, -1);
     rb_define_method(rb_cAmatch, "searchr", rb_amatch_searchr, -1);
     rb_define_method(rb_cAmatch, "pair_distance", rb_amatch_pair_distance, -1);
+    id_split = rb_intern("split");
 }
     /* vim: set et cin sw=4 ts=4: */
