@@ -1,5 +1,6 @@
 #include "ruby.h"
 #include "vector.h"
+#include "pair.h"
 
 static VALUE rb_cAmatch;
 static ID id_split;
@@ -36,32 +37,11 @@ rb_amatch_ ## name ## _set(self, value)                             \
     return Qnil;                                                    \
 }
 
-#define DEF_LEVENSHTEIN(name, mode)                                          \
-static VALUE                                                                 \
-rb_amatch_ ## name(argc, argv, self)                                         \
-    int argc;                                                                \
-    VALUE *argv;                                                             \
-    VALUE self;                                                              \
-{                                                                            \
-    int i;                                                                   \
-    GET_AMATCH;                                                              \
-    VALUE result;                                                            \
-    if (argc == 0)                                                           \
-        rb_raise(rb_eArgError, "wrong number of arguments (%d for 1)", argc);\
-    if (argc == 1)                                                           \
-        return amatch_compute_levenshtein_distance(amatch, argv[0], mode);   \
-    result = rb_ary_new2(argc);                                              \
-    for (i = 0; i < argc; i++) {                                             \
-        if (TYPE(argv[i]) != T_STRING) {                                     \
-            rb_raise(rb_eTypeError,                                          \
-                "argument #%d has to be a string (%s given)", i + 1,         \
-                NIL_P(argv[i]) ?                                             \
-                    "NilClass" : rb_class2name(CLASS_OF(argv[i])));          \
-        }                                                                    \
-        rb_ary_push(result,                                                  \
-            amatch_compute_levenshtein_distance(amatch, argv[i], mode));     \
-    }                                                                        \
-    return result;                                                           \
+#define DEF_LEVENSHTEIN(name, mode)               \
+static VALUE                                      \
+rb_amatch_ ## name(VALUE self, VALUE strings)     \
+{                                                 \
+    return iterate_strings(self, strings, mode);  \
 }
 
 typedef struct AmatchStruct {
@@ -79,8 +59,7 @@ static Amatch *Amatch_allocate()
     return amatch;
 }
 
-void
-amatch_resetw(amatch)
+static void amatch_resetw(amatch)
     Amatch *amatch;
 {
     amatch->subw    = 1;
@@ -94,11 +73,8 @@ amatch_resetw(amatch)
 
 enum { MATCH = 1, MATCHR, SEARCH, SEARCHR, COMPARE, COMPARER };
 
-static VALUE
-amatch_compute_levenshtein_distance(amatch, string, mode)
-    Amatch *amatch;
-    VALUE string;
-    char mode;
+static VALUE amatch_compute_levenshtein_distance(
+        Amatch *amatch, VALUE string, char mode)
 {
     VALUE result;
     int string_len;
@@ -183,8 +159,8 @@ amatch_compute_levenshtein_distance(amatch, string, mode)
     return result;
 }
 
-static VALUE
-amatch_compute_pair_distance(Amatch *amatch, VALUE regexp, VALUE string)
+static VALUE amatch_compute_pair_distance(
+        Amatch *amatch, VALUE regexp, VALUE string)
 {
     VALUE result;
     VALUE tokens, pt;
@@ -208,17 +184,13 @@ static void rb_amatch_free(Amatch *amatch)
     xfree(amatch);
 }
 
-static VALUE
-rb_amatch_s_allocate(klass)
-    VALUE klass;
+static VALUE rb_amatch_s_allocate(VALUE klass)
 {
     Amatch *amatch = Amatch_allocate();
     return Data_Wrap_Struct(klass, NULL, rb_amatch_free, amatch);
 }
 
-void amatch_pattern_set(amatch, pattern)
-    Amatch *amatch;
-    VALUE pattern;
+static void amatch_pattern_set(Amatch *amatch, VALUE pattern)
 {
     Check_Type(pattern, T_STRING);
     xfree(amatch->pattern);
@@ -227,18 +199,13 @@ void amatch_pattern_set(amatch, pattern)
     MEMCPY(amatch->pattern, RSTRING(pattern)->ptr, char, RSTRING(pattern)->len);
 }
   
-VALUE
-rb_amatch_pattern(self)
-    VALUE self;
+static VALUE rb_amatch_pattern(VALUE self)
 {
     GET_AMATCH;
     return rb_str_new(amatch->pattern, amatch->pattern_len);
 }
 
-VALUE
-rb_amatch_pattern_set(self, pattern)
-    VALUE self;
-    VALUE pattern;
+static VALUE rb_amatch_pattern_set(VALUE self, VALUE pattern)
 {
     GET_AMATCH;
     amatch_pattern_set(amatch, pattern);
@@ -253,23 +220,43 @@ DEF_AMATCH_WRITER(subw, T_FIXNUM, FIX2INT)
 DEF_AMATCH_WRITER(delw, T_FIXNUM, FIX2INT)
 DEF_AMATCH_WRITER(insw, T_FIXNUM, FIX2INT)
 
-static VALUE
-rb_amatch_resetw(self) VALUE self;
+static VALUE rb_amatch_resetw(VALUE self)
 {
     GET_AMATCH;
     amatch_resetw(amatch);
     return Qtrue;
 }
 
-static VALUE
-rb_amatch_initialize(self, pattern)
-    VALUE self;
-    VALUE pattern;
+static VALUE rb_amatch_initialize(VALUE self, VALUE pattern)
 {
     GET_AMATCH;
     amatch_pattern_set(amatch, pattern);
     amatch_resetw(amatch);
     return self;
+}
+
+static VALUE iterate_strings(VALUE self, VALUE strings, char mode)
+{
+    GET_AMATCH;
+    if (TYPE(strings) == T_STRING) {
+        return amatch_compute_levenshtein_distance(amatch, strings, mode);
+    } else {
+        Check_Type(strings, T_ARRAY); /* TODO iterate with #each */
+        int i;
+        VALUE result = rb_ary_new2(RARRAY(strings)->len);
+        for (i = 0; i < RARRAY(strings)->len; i++) {
+            VALUE string = rb_ary_entry(strings, i);
+            if (TYPE(string) != T_STRING) {
+                rb_raise(rb_eTypeError,
+                    "array has to contain only strings (%s given)",
+                    NIL_P(string) ?
+                        "NilClass" : rb_class2name(CLASS_OF(string)));
+            }
+            rb_ary_push(result,
+                amatch_compute_levenshtein_distance(amatch, string, mode));
+        }
+        return result;
+    }
 }
 
 DEF_LEVENSHTEIN(match, MATCH)
@@ -279,11 +266,7 @@ DEF_LEVENSHTEIN(comparer, COMPARER)
 DEF_LEVENSHTEIN(search, SEARCH)
 DEF_LEVENSHTEIN(searchr, SEARCHR)
 
-static VALUE
-rb_amatch_pair_distance(argc, argv, self)
-    int argc;
-    VALUE *argv;
-    VALUE self;
+static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
 {                                                                            
     int i;                                                                   
     GET_AMATCH;
@@ -309,8 +292,7 @@ rb_amatch_pair_distance(argc, argv, self)
     return result;                                                           
 }
 
-void
-Init_amatch()
+void Init_amatch()
 {
     rb_cAmatch = rb_define_class("Amatch", rb_cObject);
     rb_define_alloc_func(rb_cAmatch, rb_amatch_s_allocate);
@@ -322,12 +304,12 @@ Init_amatch()
     AMATCH_ACCESSOR(pattern);
     rb_define_method(rb_cAmatch, "resetw", rb_amatch_resetw, 0);
 
-    rb_define_method(rb_cAmatch, "match", rb_amatch_match, -1);
-    rb_define_method(rb_cAmatch, "matchr", rb_amatch_matchr, -1);
-    rb_define_method(rb_cAmatch, "compare", rb_amatch_compare, -1);
-    rb_define_method(rb_cAmatch, "comparer", rb_amatch_comparer, -1);
-    rb_define_method(rb_cAmatch, "search", rb_amatch_search, -1);
-    rb_define_method(rb_cAmatch, "searchr", rb_amatch_searchr, -1);
+    rb_define_method(rb_cAmatch, "match", rb_amatch_match, 1);
+    rb_define_method(rb_cAmatch, "matchr", rb_amatch_matchr, 1);
+    rb_define_method(rb_cAmatch, "compare", rb_amatch_compare, 1);
+    rb_define_method(rb_cAmatch, "comparer", rb_amatch_comparer, 1);
+    rb_define_method(rb_cAmatch, "search", rb_amatch_search, 1);
+    rb_define_method(rb_cAmatch, "searchr", rb_amatch_searchr, 1);
     rb_define_method(rb_cAmatch, "pair_distance", rb_amatch_pair_distance, -1);
     id_split = rb_intern("split");
 }

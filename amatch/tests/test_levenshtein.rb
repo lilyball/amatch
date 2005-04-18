@@ -50,13 +50,13 @@ class TC_Levenshtein < Test::Unit::TestCase
   end
 
   def test_array_result
-    assert_equal [2, 0],    @matcher.match("tets", "test");
-    assert_equal [0.5, 0],  @matcher.matchr("tets", "test");
-    assert_equal [2, 0],    @matcher.compare("tets", "test");
-    assert_equal [0.5, 0],  @matcher.comparer("tets", "test");
-    assert_equal [1, 0],    @matcher.search("tetsaaa", "testaaa");
-    assert_equal [0.25, 0], @matcher.searchr("tetsaaa", "testaaa");
-    assert_raises(TypeError) { @matcher.match(:foo, "bar") }
+    assert_equal [2, 0],    @matcher.match(["tets", "test"]);
+    assert_equal [0.5, 0],  @matcher.matchr(["tets", "test"]);
+    assert_equal [2, 0],    @matcher.compare(["tets", "test"]);
+    assert_equal [0.5, 0],  @matcher.comparer(["tets", "test"]);
+    assert_equal [1, 0],    @matcher.search(["tetsaaa", "testaaa"]);
+    assert_equal [0.25, 0], @matcher.searchr(["tetsaaa", "testaaa"]);
+    assert_raises(TypeError) { @matcher.match([:foo, "bar"]) }
   end
 
   def test_weights
