@@ -23,6 +23,7 @@ PairArray *PairArray_new(VALUE tokens);
 double pair_array_match(PairArray *self, PairArray *other);
 void pair_array_destroy(PairArray *pair_array);
 void pair_print(Pair pair);
+void pair_array_reactivate(PairArray *self);
 
 #endif
   /* vim: set et cindent sw=4 ts=4: */ 

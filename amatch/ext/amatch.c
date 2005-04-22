@@ -45,11 +45,12 @@ rb_amatch_ ## name(VALUE self, VALUE strings)     \
 }
 
 typedef struct AmatchStruct {
-    int     subw;
-    int     delw;
-    int     insw;
-    char    *pattern;
-    char    pattern_len;
+    int         subw;
+    int         delw;
+    int         insw;
+    char        *pattern;
+    char        pattern_len;
+    PairArray   *pattern_pair_array;
 } Amatch;
 
 static Amatch *Amatch_allocate()
@@ -164,18 +165,21 @@ static VALUE amatch_compute_pair_distance(
 {
     double result;
     VALUE tokens;
-    PairArray *pattern_pair_array, *pair_array;
+    PairArray *pair_array;
     
     Check_Type(string, T_STRING);
     tokens = rb_funcall(
         rb_str_new(amatch->pattern, amatch->pattern_len),
         id_split, 1, regexp
     );
-    pattern_pair_array = PairArray_new(tokens);
+    if (!amatch->pattern_pair_array) {
+        amatch->pattern_pair_array = PairArray_new(tokens);
+    } else {
+        pair_array_reactivate(amatch->pattern_pair_array);
+    }
     tokens = rb_funcall(string, id_split, 1, regexp);
     pair_array = PairArray_new(tokens);
-    result = pair_array_match(pattern_pair_array, pair_array);
-    pair_array_destroy(pattern_pair_array);
+    result = pair_array_match(amatch->pattern_pair_array, pair_array);
     pair_array_destroy(pair_array);
     return rb_float_new(result);
 }
@@ -275,16 +279,16 @@ DEF_LEVENSHTEIN(searchr, SEARCHR)
 
 static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
 {                                                                            
-    VALUE strings, regexp = Qnil;
+    VALUE result, strings, regexp = Qnil;
     GET_AMATCH;
 
     rb_scan_args(argc, argv, "11", &strings, &regexp);
     if (TYPE(strings) == T_STRING) {
-        return amatch_compute_pair_distance(amatch, strings, regexp);
+        result = amatch_compute_pair_distance(amatch, strings, regexp);
     } else {
         Check_Type(strings, T_ARRAY); /* TODO iterate with #each */
         int i;
-        VALUE result = rb_ary_new2(RARRAY(strings)->len);
+        result = rb_ary_new2(RARRAY(strings)->len);
         for (i = 0; i < RARRAY(strings)->len; i++) {
             VALUE string = rb_ary_entry(strings, i);
             if (TYPE(string) != T_STRING) {
@@ -296,8 +300,10 @@ static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
             rb_ary_push(result,
                 amatch_compute_pair_distance(amatch, string, regexp));
         }
-        return result;
     }
+    pair_array_destroy(amatch->pattern_pair_array);
+    amatch->pattern_pair_array = NULL;
+    return result;
 }
 
 void Init_amatch()
