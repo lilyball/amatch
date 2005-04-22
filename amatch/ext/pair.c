@@ -46,7 +46,7 @@ double pair_array_match(PairArray *self, PairArray *other)
 {
     int i, j, matches = 0;
     int sum = self->len + other->len;
-    if (sum == 0) return 0.0;
+    if (sum == 0) return 1.0;
     for (i = 0; i < self->len; i++) {
         for (j = 0; j < other->len; j++) {
 #if DEBUG
