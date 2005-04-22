@@ -34,6 +34,7 @@ PairArray *PairArray_new(VALUE tokens)
 
 void pair_array_reactivate(PairArray *self)
 {
+    int i;
     for (i = 0; i < self->len; i++) { 
         self->pairs[i].status = PAIR_ACTIVE;
     }
