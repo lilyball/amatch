@@ -1,5 +1,7 @@
 #include "pair.h"
 
+#define DEBUG 0
+
 static int predict_length(VALUE tokens)
 {
     int i, l, result;
@@ -47,10 +49,12 @@ double pair_array_match(PairArray *self, PairArray *other)
     if (sum == 0) return 0.0;
     for (i = 0; i < self->len; i++) {
         for (j = 0; j < other->len; j++) {
+#if DEBUG
             pair_print(self->pairs[i]);
             putc(' ', stdout);
             pair_print(other->pairs[j]);
             printf(" -> %d\n", pair_equal(self->pairs[i], other->pairs[j]));
+#endif
             if (pair_equal(self->pairs[i], other->pairs[j])) {
                 matches++;
                 other->pairs[j].status = PAIR_INACTIVE;
