@@ -3,7 +3,7 @@
 
 #include "ruby.h"
 
-enum { PAIR_ACTIVE = 0, PAIR_INACTIVE, PAIR_END };
+enum { PAIR_ACTIVE = 1, PAIR_INACTIVE = 2 };
 
 typedef struct PairStruct {
     char fst;
@@ -12,7 +12,17 @@ typedef struct PairStruct {
     char __align;
 } Pair;
 
-Pair *PairArray_new(VALUE tokens);
+typedef struct PairArrayStruct {
+    Pair *pairs;
+    int len;
+} PairArray;
+
+PairArray *PairArray_new(VALUE tokens);
+#define pair_equal(a, b) \
+    ((a).fst == (b).fst && (a).snd == (b).snd && ((a).status & (b).status & PAIR_ACTIVE))
+double pair_array_match(PairArray *self, PairArray *other);
+void pair_array_destroy(PairArray *pair_array);
+void pair_print(Pair pair);
 
 #endif
   /* vim: set et cindent sw=4 ts=4: */ 

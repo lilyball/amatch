@@ -1,23 +1,73 @@
 #include "pair.h"
 
-Pair *PairArray_new(VALUE tokens)
+static int predict_length(VALUE tokens)
 {
-#if 0
-    int i; 
-    Pair *pairs = ALLOC_N(Pair, string_len);
-    MEMZERO(pairs, Pair, string_len);
-    for (i = 0; i < string_len - 1; i++) {
-        pairs[i].fst = string[i];
-        pairs[i].snd = string[i + 1];
-        pairs[i].status = PAIR_ACTIVE;
+    int i, l, result;
+    for (i = 0, result = 0; i < RARRAY(tokens)->len; i++) {
+        VALUE t = rb_ary_entry(tokens, i);
+        l = RSTRING(t)->len - 1;
+        if (l > 0) result += l;
     }
-    pairs[i].status = PAIR_END;
-    return pairs;
-#endif
+    return result;
 }
 
-double pair_array_match(Pair *self, Pair *other)
+PairArray *PairArray_new(VALUE tokens)
 {
-    
+    int i, j, k, len = predict_length(tokens); 
+    PairArray *pair_array = ALLOC(PairArray);
+    Pair *pairs = ALLOC_N(Pair, len);
+    MEMZERO(pairs, Pair, len);
+    pair_array->pairs = pairs;
+    pair_array->len = len;
+    for (i = 0, k = 0; i < RARRAY(tokens)->len; i++) {
+        VALUE t = rb_ary_entry(tokens, i);
+        char *string = RSTRING(t)->ptr;
+        for (j = 0; j < RSTRING(t)->len - 1; j++) {
+            pairs[k].fst = string[j];
+            pairs[k].snd = string[j + 1];
+            pairs[k].status = PAIR_ACTIVE;
+            k++;
+        }
+    }
+    return pair_array;
+}
+
+void pair_array_reactivate(PairArray *self)
+{
+    for (i = 0; i < self->len; i++) { 
+        self->pairs[i].status = PAIR_ACTIVE;
+    }
+}
+
+double pair_array_match(PairArray *self, PairArray *other)
+{
+    int i, j, matches = 0;
+    int sum = self->len + other->len;
+    if (sum == 0) return 0.0;
+    for (i = 0; i < self->len; i++) {
+        for (j = 0; j < other->len; j++) {
+            pair_print(self->pairs[i]);
+            putc(' ', stdout);
+            pair_print(other->pairs[j]);
+            printf(" -> %d\n", pair_equal(self->pairs[i], other->pairs[j]));
+            if (pair_equal(self->pairs[i], other->pairs[j])) {
+                matches++;
+                other->pairs[j].status = PAIR_INACTIVE;
+                break;
+            }
+        }
+    }
+    return ((double) (2 * matches)) / sum;
+}
+
+void pair_print(Pair pair)
+{
+    printf("%c%c (%d)", pair.fst, pair.snd, pair.status);
+}
+
+void pair_array_destroy(PairArray *pair_array)
+{
+    xfree(pair_array->pairs);
+    xfree(pair_array);
 }
   /* vim: set et cindent sw=4 ts=4: */ 

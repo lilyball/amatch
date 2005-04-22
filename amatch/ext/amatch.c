@@ -41,7 +41,7 @@ rb_amatch_ ## name ## _set(self, value)                             \
 static VALUE                                      \
 rb_amatch_ ## name(VALUE self, VALUE strings)     \
 {                                                 \
-    return iterate_strings(self, strings, mode);  \
+    return levenshtein_iterate_strings(self, strings, mode);  \
 }
 
 typedef struct AmatchStruct {
@@ -160,17 +160,24 @@ static VALUE amatch_compute_levenshtein_distance(
 }
 
 static VALUE amatch_compute_pair_distance(
-        Amatch *amatch, VALUE regexp, VALUE string)
+        Amatch *amatch, VALUE string, VALUE regexp)
 {
-    VALUE result;
-    VALUE tokens, pt;
-    Pair *pattern_array, *pair_array;
+    double result;
+    VALUE tokens;
+    PairArray *pattern_pair_array, *pair_array;
     
     Check_Type(string, T_STRING);
+    tokens = rb_funcall(
+        rb_str_new(amatch->pattern, amatch->pattern_len),
+        id_split, 1, regexp
+    );
+    pattern_pair_array = PairArray_new(tokens);
     tokens = rb_funcall(string, id_split, 1, regexp);
     pair_array = PairArray_new(tokens);
-    return rb_float_new(pair_array_match(pattern_array, pair_array));
-//return result;
+    result = pair_array_match(pattern_pair_array, pair_array);
+    pair_array_destroy(pattern_pair_array);
+    pair_array_destroy(pair_array);
+    return rb_float_new(result);
 }
 
 /*
@@ -235,7 +242,7 @@ static VALUE rb_amatch_initialize(VALUE self, VALUE pattern)
     return self;
 }
 
-static VALUE iterate_strings(VALUE self, VALUE strings, char mode)
+static VALUE levenshtein_iterate_strings(VALUE self, VALUE strings, char mode)
 {
     GET_AMATCH;
     if (TYPE(strings) == T_STRING) {
@@ -268,28 +275,29 @@ DEF_LEVENSHTEIN(searchr, SEARCHR)
 
 static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
 {                                                                            
-    int i;                                                                   
+    VALUE strings, regexp = Qnil;
     GET_AMATCH;
-    VALUE result;                                                            
 
-    if (argc < 2)
-        rb_raise(rb_eArgError, "wrong number of arguments (%d for 2)", argc);
-    /*
-    if (argc == 2)                                                           
-        return amatch_compute_pair_distance(amatch, argv[0]);   
-        */
-    result = rb_ary_new2(argc - 1);
-    for (i = 1; i < argc; i++) {                                             
-        if (TYPE(argv[i]) != T_STRING) {                                     
-            rb_raise(rb_eTypeError,                                          
-                "argument #%d has to be a string (%s given)", i + 1,         
-                NIL_P(argv[i]) ?                                             
-                    "NilClass" : rb_class2name(CLASS_OF(argv[i])));          
-        }                                                                    
-        rb_ary_push(result,
-            amatch_compute_pair_distance(amatch, argv[0], argv[i]));
-    }                                                                        
-    return result;                                                           
+    rb_scan_args(argc, argv, "11", &strings, &regexp);
+    if (TYPE(strings) == T_STRING) {
+        return amatch_compute_pair_distance(amatch, strings, regexp);
+    } else {
+        Check_Type(strings, T_ARRAY); /* TODO iterate with #each */
+        int i;
+        VALUE result = rb_ary_new2(RARRAY(strings)->len);
+        for (i = 0; i < RARRAY(strings)->len; i++) {
+            VALUE string = rb_ary_entry(strings, i);
+            if (TYPE(string) != T_STRING) {
+                rb_raise(rb_eTypeError,
+                    "array has to contain only strings (%s given)",
+                    NIL_P(string) ?
+                        "NilClass" : rb_class2name(CLASS_OF(string)));
+            }
+            rb_ary_push(result,
+                amatch_compute_pair_distance(amatch, string, regexp));
+        }
+        return result;
+    }
 }
 
 void Init_amatch()
