@@ -54,6 +54,10 @@ rb_amatch_ ## name(VALUE self, VALUE strings)                   \
     return levenshtein_iterate_strings(self, strings, mode);    \
 }
 
+/*
+ * The core object of the Amatch class
+ */
+
 typedef struct AmatchStruct {
     double      subw;
     double      delw;
@@ -172,30 +176,49 @@ static VALUE amatch_compute_levenshtein_distance(
     vector_destroy(v[1]);
     return result;
 }
+/*
+ * Pair distances are computed here:
+ */
 
 static VALUE amatch_compute_pair_distance(
-        Amatch *amatch, VALUE string, VALUE regexp)
+        Amatch *amatch, VALUE string, VALUE regexp, int use_regexp)
 {
     double result;
     VALUE tokens;
     PairArray *pair_array;
     
     Check_Type(string, T_STRING);
-    tokens = rb_funcall(
-        rb_str_new(amatch->pattern, amatch->pattern_len),
-        id_split, 1, regexp
-    );
-    if (!amatch->pattern_pair_array) {
-        amatch->pattern_pair_array = PairArray_new(tokens);
+    if (!NIL_P(regexp) || use_regexp) {
+        tokens = rb_funcall(
+            rb_str_new(amatch->pattern, amatch->pattern_len),
+            id_split, 1, regexp
+        );
+        if (!amatch->pattern_pair_array) {
+            amatch->pattern_pair_array = PairArray_new(tokens);
+        } else {
+            pair_array_reactivate(amatch->pattern_pair_array);
+        }
+        tokens = rb_funcall(string, id_split, 1, regexp);
+        pair_array = PairArray_new(tokens);
     } else {
-        pair_array_reactivate(amatch->pattern_pair_array);
+        VALUE tmp = rb_str_new(amatch->pattern, amatch->pattern_len);
+        tokens = rb_ary_new4(1, &tmp);
+        if (!amatch->pattern_pair_array) {
+            amatch->pattern_pair_array = PairArray_new(tokens);
+        } else {
+            pair_array_reactivate(amatch->pattern_pair_array);
+        }
+        tokens = rb_ary_new4(1, &string);
+        pair_array = PairArray_new(tokens);
     }
-    tokens = rb_funcall(string, id_split, 1, regexp);
-    pair_array = PairArray_new(tokens);
     result = pair_array_match(amatch->pattern_pair_array, pair_array);
     pair_array_destroy(pair_array);
     return rb_float_new(result);
 }
+
+/*
+ * Hamming distances are computed here:
+ */
 
 static VALUE amatch_hamming(Amatch *amatch, VALUE string)
 {
@@ -241,6 +264,10 @@ static VALUE amatch_hammingr(Amatch *amatch, VALUE string)
     return rb_float_new((double) result / amatch->pattern_len);
 }
 
+/*
+ * A few helper functions go here:
+ */
+
 static VALUE iterate_strings(VALUE self, VALUE strings,
     VALUE (*match_function) (Amatch *amatch, VALUE strings))
 {
@@ -260,6 +287,30 @@ static VALUE iterate_strings(VALUE self, VALUE strings,
                         "NilClass" : rb_class2name(CLASS_OF(string)));
             }
             rb_ary_push(result, match_function(amatch, string));
+        }
+        return result;
+    }
+}
+
+static VALUE levenshtein_iterate_strings(VALUE self, VALUE strings, char mode)
+{
+    GET_AMATCH;
+    if (TYPE(strings) == T_STRING) {
+        return amatch_compute_levenshtein_distance(amatch, strings, mode);
+    } else {
+        Check_Type(strings, T_ARRAY);
+        int i;
+        VALUE result = rb_ary_new2(RARRAY(strings)->len);
+        for (i = 0; i < RARRAY(strings)->len; i++) {
+            VALUE string = rb_ary_entry(strings, i);
+            if (TYPE(string) != T_STRING) {
+                rb_raise(rb_eTypeError,
+                    "array has to contain only strings (%s given)",
+                    NIL_P(string) ?
+                        "NilClass" : rb_class2name(CLASS_OF(string)));
+            }
+            rb_ary_push(result,
+                amatch_compute_levenshtein_distance(amatch, string, mode));
         }
         return result;
     }
@@ -328,30 +379,6 @@ static VALUE rb_amatch_initialize(VALUE self, VALUE pattern)
     return self;
 }
 
-static VALUE levenshtein_iterate_strings(VALUE self, VALUE strings, char mode)
-{
-    GET_AMATCH;
-    if (TYPE(strings) == T_STRING) {
-        return amatch_compute_levenshtein_distance(amatch, strings, mode);
-    } else {
-        Check_Type(strings, T_ARRAY);
-        int i;
-        VALUE result = rb_ary_new2(RARRAY(strings)->len);
-        for (i = 0; i < RARRAY(strings)->len; i++) {
-            VALUE string = rb_ary_entry(strings, i);
-            if (TYPE(string) != T_STRING) {
-                rb_raise(rb_eTypeError,
-                    "array has to contain only strings (%s given)",
-                    NIL_P(string) ?
-                        "NilClass" : rb_class2name(CLASS_OF(string)));
-            }
-            rb_ary_push(result,
-                amatch_compute_levenshtein_distance(amatch, string, mode));
-        }
-        return result;
-    }
-}
-
 DEF_LEVENSHTEIN(match, L_MATCH)
 DEF_LEVENSHTEIN(matchr, L_MATCHR)
 DEF_LEVENSHTEIN(compare, COMPARE)
@@ -362,11 +389,13 @@ DEF_LEVENSHTEIN(searchr, SEARCHR)
 static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
 {                                                                            
     VALUE result, strings, regexp = Qnil;
+    int use_regexp;
     GET_AMATCH;
 
     rb_scan_args(argc, argv, "11", &strings, &regexp);
+    use_regexp = NIL_P(regexp) && argc != 2;
     if (TYPE(strings) == T_STRING) {
-        result = amatch_compute_pair_distance(amatch, strings, regexp);
+        result = amatch_compute_pair_distance(amatch, strings, regexp, use_regexp);
     } else {
         Check_Type(strings, T_ARRAY);
         int i;
@@ -380,7 +409,7 @@ static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
                         "NilClass" : rb_class2name(CLASS_OF(string)));
             }
             rb_ary_push(result,
-                amatch_compute_pair_distance(amatch, string, regexp));
+                amatch_compute_pair_distance(amatch, string, regexp, use_regexp));
         }
     }
     pair_array_destroy(amatch->pattern_pair_array);

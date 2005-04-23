@@ -17,12 +17,15 @@ SYNOPSIS
     p m.comparer("pattn")
     p m.search("abcpattrendef")
     p m.searchr("abcpattrendef")
+    p m.hamming("pattren")
+    p m.hammingr("pattren")
+    p m.pair_distance("pattren")
 
 DESCRIPTION
 
 This class enables your programs to do approximate matching, searching and
 comparing of strings. It uses an algorithm that calculates the Levenshtein
-distance between those strings to implement those features.
+distance between those strings to implement those features. XXX
 
 The Levenshtein edit distance is defined as the minimal costs involved to
 transform one string into another by using three elementary operations:
@@ -54,23 +57,25 @@ METHODS
 
 - Amatch#pattern    pattern string to match against
 
-- Amatch#subw        weight of one substitution (type Fixnum)
+- Amatch#subw       weight of one substitution (type Float and >= 0)
 
-- Amatch#delw        weight of one deletion (type Fixnum)
+- Amatch#delw       weight of one deletion (type Float and >= 0)
 
-- Amatch#insw        weight of one insertion (type Fixnum)
+- Amatch#insw       weight of one insertion (type Float and >= 0)
 
-- Amatch#resetw        resets all weights to their default values (=1).
+- Amatch#reset_weights or
+  Amatch#resetw        resets all weights to their default values (=1).
 
-The following methods require the parameter 'strings'. This parameter can be
-of type String or Array of Strings. The method executes the matching operation
-and returns a number if a string was given. If an array of strings was given
-it returns an array of numbers.
+The following methods require the parameter 'strings'. This parameter can be of
+type String or Array of Strings. The method executes the matching operation and
+returns a number if a string was given. If an array of strings was given, it
+returns an array of numbers.
 
 - Amatch#match(strings)
 
   calculates the absolute edit distance(s) between 'pattern' and 'strings' =
-  the Levenshtein distance in char operations. See also Amatch#pattern.
+  the Levenshtein distance in weighted char operations. See also
+  Amatch#pattern.
 
 - Amatch#matchr(strings)
 
@@ -99,10 +104,27 @@ it returns an array of numbers.
   result value is negative if the strings are shorter than 'pattern' or
   positive else.
 
+- Amatch#hamming(strings)
+
+  calculates the absolute hamming distance(s) between 'pattern' and 'strings' =
+  the number of characters, that are different. See also Amatch#pattern.
+        
+- Amatch#hammingr(strings)
+
+  does the same as Amatch#hamming but divides the edit distance by the length
+  of 'pattern' and returns the value as float.
+
+- Amatch#pair_distance(strings, regexp = /\s+/)
+  calculates the pair distance(s) between 'pattern' and 'strings'. The argument
+  regexp is used to split the pattern and strings into tokens first, it
+  defaults to /\s+/. If the splitting should be omitted, call the method with
+  nil as regexp explicitly. See also Amatch#pattern.
+
 EXAMPLES
 
 An agrep utility will be installed that demonstrates the usage of this
-library.
+library. Good examples can also be found in the "tests" directory, where
+the unit tests are located.
 
 AUTHOR
 
@@ -110,7 +132,7 @@ Florian Frank <flori@ping.de>
 
 COPYRIGHT
 
-Copyright (c) 2002        Florian Frank <flori@ping.de>
+Copyright (c) 2002-5        Florian Frank <flori@ping.de>
 
 This is free software; you can redistribute it and/or modify it under the
 terms of the GNU General Public License Version 2 as published by the Free
