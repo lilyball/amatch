@@ -409,6 +409,7 @@ void Init_amatch()
     AMATCH_ACCESSOR(insw);
     AMATCH_ACCESSOR(pattern);
     rb_define_method(rb_cAmatch, "resetw", rb_amatch_resetw, 0);
+    rb_define_method(rb_cAmatch, "reset_weights", rb_amatch_resetw, 0);
 
     rb_define_method(rb_cAmatch, "match", rb_amatch_match, 1);
     rb_define_method(rb_cAmatch, "matchr", rb_amatch_matchr, 1);

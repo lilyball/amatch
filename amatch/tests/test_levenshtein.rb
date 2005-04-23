@@ -82,7 +82,7 @@ class TC_Levenshtein < Test::Unit::TestCase
     @matcher.delw = 2
     assert_in_delta 2, @matcher.delw, D
     assert_in_delta 2, @matcher.match('tst'), D
-    @matcher.resetw  
+    @matcher.reset_weights
     assert_in_delta 1, @matcher.subw, D
     assert_in_delta 1, @matcher.insw, D
     assert_in_delta 1, @matcher.delw, D
