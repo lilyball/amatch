@@ -290,9 +290,7 @@ static VALUE amatch_lcs_length(Amatch *amatch, VALUE string)
         for (j = b_len; j >= 0; j--) {
             if (i == a_len || j == b_len) {
                 l[c][j] = 0;
-                continue;
-            }
-            if (a_ptr[i] == b_ptr[j]) {
+            } else if (a_ptr[i] == b_ptr[j]) {
                 l[c][j] = 1 + l[p][j + 1];
             } else {
                 int x = l[p][j], y = l[c][j + 1];
