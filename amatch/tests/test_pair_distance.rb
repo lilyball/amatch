@@ -5,17 +5,17 @@ class TC_PairDistance < Test::Unit::TestCase
   D = 0.000001
 
   def setup
-    @single = Amatch.new('test')
-    @empty = Amatch.new('')
-    @france = Amatch.new('republic of france')
-    @germany = Amatch.new('federal republic of germany')
-    @csv = Amatch.new('foo,bar,baz')
+    @single   = Amatch.new('test')
+    @empty    = Amatch.new('')
+    @france   = Amatch.new('republic of france')
+    @germany  = Amatch.new('federal republic of germany')
+    @csv      = Amatch.new('foo,bar,baz')
   end
 
   def test_empty
-    assert_in_delta 1,          @empty.pair_distance(''), D
-    assert_in_delta 0,          @empty.pair_distance('not empty'), D
-    assert_in_delta 0,          @single.pair_distance(''), D
+    assert_in_delta 1, @empty.pair_distance(''), D
+    assert_in_delta 0, @empty.pair_distance('not empty'), D
+    assert_in_delta 0, @single.pair_distance(''), D
   end
 
   def test_countries
