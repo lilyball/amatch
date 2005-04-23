@@ -19,8 +19,8 @@ void vector_print(Vector *v)
 
 void vector_destroy(Vector *v)
 {
-    xfree(v->ptr);
-    xfree(v);
+    free(v->ptr);
+    free(v);
 }
 
 double vector_minimum(Vector *v)

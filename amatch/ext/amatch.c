@@ -123,7 +123,7 @@ static VALUE amatch_compute_levenshtein_distance(
     v[1] = Vector_new(string_len);
     for (i = 1; i <= amatch->pattern_len; i++) {
         c = i % 2;                /* current row */
-        p = (i - 1) % 2;          /* previous row */
+        p = (i + 1) % 2;          /* previous row */
         v[c]->ptr[0] = i * amatch->delw;    /* first column */
         for (j = 1; j <= string_len; j++) {
             /* Bellman's principle of optimality: */
@@ -264,6 +264,50 @@ static VALUE amatch_hammingr(Amatch *amatch, VALUE string)
     return rb_float_new((double) result / amatch->pattern_len);
 }
 
+static VALUE amatch_lcs_length(Amatch *amatch, VALUE string)
+{
+    char *a_ptr, *b_ptr;
+    int result, c, p, i, j, a_len, b_len, *l[2];
+    
+    Check_Type(string, T_STRING);
+    if (amatch->pattern_len < RSTRING(string)->len) {
+        a_ptr = amatch->pattern;
+        a_len = amatch->pattern_len;
+        b_ptr = RSTRING(string)->ptr;
+        b_len = RSTRING(string)->len;
+    } else {
+        a_ptr = RSTRING(string)->ptr;
+        a_len = RSTRING(string)->len;
+        b_ptr = amatch->pattern;
+        b_len = amatch->pattern_len;
+    }
+
+    if (a_len == 0 || b_len == 0) return INT2FIX(0);
+
+    l[0] = ALLOC_N(int, b_len + 1); 
+    l[1] = ALLOC_N(int, b_len + 1);
+    for (i = a_len, c = 0, p = 1; i >= 0; i--) {
+        for (j = b_len; j >= 0; j--) {
+            if (i == a_len || j == b_len) {
+                l[c][j] = 0;
+                continue;
+            }
+            if (a_ptr[i] == b_ptr[j]) {
+                l[c][j] = 1 + l[p][j + 1];
+            } else {
+                int x = l[p][j], y = l[c][j + 1];
+                if (x > y) l[c][j] = x; else l[c][j] = y;
+            }
+        }
+        p = c;
+        c = (c + 1) % 2;
+    }
+    result = l[p][0];
+    free(l[0]);
+    free(l[1]);
+    return INT2FIX(result);
+}
+
 /*
  * A few helper functions go here:
  */
@@ -323,9 +367,9 @@ static VALUE levenshtein_iterate_strings(VALUE self, VALUE strings, char mode)
 static void rb_amatch_free(Amatch *amatch)
 {
     MEMZERO(amatch->pattern, char, amatch->pattern_len);
-    xfree(amatch->pattern);
+    free(amatch->pattern);
     MEMZERO(amatch, Amatch, 1);
-    xfree(amatch);
+    free(amatch);
 }
 
 static VALUE rb_amatch_s_allocate(VALUE klass)
@@ -337,7 +381,7 @@ static VALUE rb_amatch_s_allocate(VALUE klass)
 static void amatch_pattern_set(Amatch *amatch, VALUE pattern)
 {
     Check_Type(pattern, T_STRING);
-    xfree(amatch->pattern);
+    free(amatch->pattern);
     amatch->pattern_len = RSTRING(pattern)->len;
     amatch->pattern = ALLOC_N(char, amatch->pattern_len);
     MEMCPY(amatch->pattern, RSTRING(pattern)->ptr, char, RSTRING(pattern)->len);
@@ -427,6 +471,12 @@ static VALUE rb_amatch_hammingr(VALUE self, VALUE strings)
     return iterate_strings(self, strings, amatch_hammingr);
 }
 
+static VALUE rb_amatch_lcs_length(VALUE self, VALUE strings)
+{                                                                            
+    return iterate_strings(self, strings, amatch_lcs_length);
+}
+
+
 void Init_amatch()
 {
     rb_cAmatch = rb_define_class("Amatch", rb_cObject);
@@ -449,6 +499,7 @@ void Init_amatch()
     rb_define_method(rb_cAmatch, "hamming", rb_amatch_hamming, 1);
     rb_define_method(rb_cAmatch, "hammingr", rb_amatch_hammingr, 1);
     rb_define_method(rb_cAmatch, "pair_distance", rb_amatch_pair_distance, -1);
+    rb_define_method(rb_cAmatch, "lcs_length", rb_amatch_lcs_length, 1);
     id_split = rb_intern("split");
     id_to_f = rb_intern("to_f");
 }

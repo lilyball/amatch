@@ -72,7 +72,7 @@ void pair_print(Pair pair)
 
 void pair_array_destroy(PairArray *pair_array)
 {
-    xfree(pair_array->pairs);
-    xfree(pair_array);
+    free(pair_array->pairs);
+    free(pair_array);
 }
   /* vim: set et cindent sw=4 ts=4: */ 
