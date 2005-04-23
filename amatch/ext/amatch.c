@@ -82,7 +82,7 @@ static void amatch_resetw(amatch)
  * Levenshtein edit distances are computed here:
  */
 
-enum { MATCH = 1, MATCHR, SEARCH, SEARCHR, COMPARE, COMPARER };
+enum { L_MATCH = 1, L_MATCHR, SEARCH, SEARCHR, COMPARE, COMPARER };
 
 static VALUE amatch_compute_levenshtein_distance(
         Amatch *amatch, VALUE string, char mode)
@@ -101,8 +101,8 @@ static VALUE amatch_compute_levenshtein_distance(
 
     v[0] = Vector_new(string_len);
     switch (mode) {
-        case MATCH:
-        case MATCHR:
+        case L_MATCH:
+        case L_MATCHR:
         case COMPARE:
         case COMPARER:
             for (i = 0; i <= v[0]->len; i++) v[0]->ptr[i] = i * amatch->insw;
@@ -135,10 +135,10 @@ static VALUE amatch_compute_levenshtein_distance(
         }
     }
     switch (mode) {
-        case MATCH:
+        case L_MATCH:
             result = rb_float_new(vector_last(v[c]));
             break;
-        case MATCHR:
+        case L_MATCHR:
             result = rb_float_new(
                 (double) vector_last(v[c]) / amatch->pattern_len
             );
@@ -195,6 +195,74 @@ static VALUE amatch_compute_pair_distance(
     result = pair_array_match(amatch->pattern_pair_array, pair_array);
     pair_array_destroy(pair_array);
     return rb_float_new(result);
+}
+
+static VALUE amatch_hamming(Amatch *amatch, VALUE string)
+{
+    char *string_ptr;
+    int i, string_len;
+    int result = 0;
+    
+    Check_Type(string, T_STRING);
+    string_ptr = RSTRING(string)->ptr;
+    string_len = RSTRING(string)->len;
+    if (string_len > amatch->pattern_len) {
+        result += string_len - amatch->pattern_len;
+    }
+    for (i = 0; i < amatch->pattern_len; i++) {
+        if (i >= string_len) {
+            result +=  amatch->pattern_len - string_len;
+            break;
+        }
+        if (string_ptr[i] != amatch->pattern[i]) result++;
+    }
+    return INT2FIX(result);
+}
+
+static VALUE amatch_hammingr(Amatch *amatch, VALUE string)
+{
+    char *string_ptr;
+    int i, string_len;
+    int result = 0;
+    
+    Check_Type(string, T_STRING);
+    string_ptr = RSTRING(string)->ptr;
+    string_len = RSTRING(string)->len;
+    if (string_len > amatch->pattern_len) {
+        result += string_len - amatch->pattern_len;
+    }
+    for (i = 0; i < amatch->pattern_len; i++) {
+        if (i >= string_len) {
+            result +=  amatch->pattern_len - string_len;
+            break;
+        }
+        if (string_ptr[i] != amatch->pattern[i]) result++;
+    }
+    return rb_float_new((double) result / amatch->pattern_len);
+}
+
+static VALUE iterate_strings(VALUE self, VALUE strings,
+    VALUE (*match_function) (Amatch *amatch, VALUE strings))
+{
+    GET_AMATCH;
+    if (TYPE(strings) == T_STRING) {
+        return match_function(amatch, strings);
+    } else {
+        Check_Type(strings, T_ARRAY);
+        int i;
+        VALUE result = rb_ary_new2(RARRAY(strings)->len);
+        for (i = 0; i < RARRAY(strings)->len; i++) {
+            VALUE string = rb_ary_entry(strings, i);
+            if (TYPE(string) != T_STRING) {
+                rb_raise(rb_eTypeError,
+                    "array has to contain only strings (%s given)",
+                    NIL_P(string) ?
+                        "NilClass" : rb_class2name(CLASS_OF(string)));
+            }
+            rb_ary_push(result, match_function(amatch, string));
+        }
+        return result;
+    }
 }
 
 /*
@@ -284,8 +352,8 @@ static VALUE levenshtein_iterate_strings(VALUE self, VALUE strings, char mode)
     }
 }
 
-DEF_LEVENSHTEIN(match, MATCH)
-DEF_LEVENSHTEIN(matchr, MATCHR)
+DEF_LEVENSHTEIN(match, L_MATCH)
+DEF_LEVENSHTEIN(matchr, L_MATCHR)
 DEF_LEVENSHTEIN(compare, COMPARE)
 DEF_LEVENSHTEIN(comparer, COMPARER)
 DEF_LEVENSHTEIN(search, SEARCH)
@@ -320,6 +388,16 @@ static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
     return result;
 }
 
+static VALUE rb_amatch_hamming(VALUE self, VALUE strings)
+{                                                                            
+    return iterate_strings(self, strings, amatch_hamming);
+}
+
+static VALUE rb_amatch_hammingr(VALUE self, VALUE strings)
+{                                                                            
+    return iterate_strings(self, strings, amatch_hammingr);
+}
+
 void Init_amatch()
 {
     rb_cAmatch = rb_define_class("Amatch", rb_cObject);
@@ -338,6 +416,8 @@ void Init_amatch()
     rb_define_method(rb_cAmatch, "comparer", rb_amatch_comparer, 1);
     rb_define_method(rb_cAmatch, "search", rb_amatch_search, 1);
     rb_define_method(rb_cAmatch, "searchr", rb_amatch_searchr, 1);
+    rb_define_method(rb_cAmatch, "hamming", rb_amatch_hamming, 1);
+    rb_define_method(rb_cAmatch, "hammingr", rb_amatch_hammingr, 1);
     rb_define_method(rb_cAmatch, "pair_distance", rb_amatch_pair_distance, -1);
     id_split = rb_intern("split");
     id_to_f = rb_intern("to_f");
