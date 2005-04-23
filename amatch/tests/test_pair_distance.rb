@@ -15,7 +15,6 @@ class TC_PairDistance < Test::Unit::TestCase
   def test_empty
     assert_in_delta 1, @empty.pair_distance(''), D
     assert_in_delta 0, @empty.pair_distance('not empty'), D
-    assert_in_delta 0, @single.pair_distance(''), D
   end
 
   def test_countries
