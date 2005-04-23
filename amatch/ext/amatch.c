@@ -3,8 +3,7 @@
 #include "pair.h"
 
 static VALUE rb_cAmatch;
-static ID id_split;
-
+static ID id_split, id_to_f;
 
 /* Macromania goes here: */
 
@@ -12,8 +11,8 @@ static ID id_split;
     Amatch *amatch;                         \
     Data_Get_Struct(self, Amatch, amatch)
 
-#define AMATCH_ACCESSOR(name) \
-    rb_define_method(rb_cAmatch, #name, rb_amatch_ ## name, 0); \
+#define AMATCH_ACCESSOR(name)                                               \
+    rb_define_method(rb_cAmatch, #name, rb_amatch_ ## name, 0);             \
     rb_define_method(rb_cAmatch, #name"=", rb_amatch_ ## name ## _set, 1)
 
 #define DEF_AMATCH_READER(name, converter)                          \
@@ -25,29 +24,40 @@ rb_amatch_ ## name(self)                                            \
     return converter(amatch->name);                                 \
 }
 
-#define DEF_AMATCH_WRITER(name, type, converter)                    \
+#define DEF_AMATCH_WRITER(name, type, caster, converter, check)     \
 VALUE                                                               \
 rb_amatch_ ## name ## _set(self, value)                             \
     VALUE self;                                                     \
     VALUE value;                                                    \
 {                                                                   \
+    type value_ ## type;                                            \
     GET_AMATCH;                                                     \
-    Check_Type(value, type);                                        \
-    amatch->name = converter(value);                                \
+    caster(value);                                                  \
+    value_ ## type = converter(value);                              \
+    if (!(value_ ## type check))                                    \
+        rb_raise(rb_eTypeError, "check of value " #check " failed");\
+    amatch->name = value_ ## type;                                  \
     return Qnil;                                                    \
 }
 
-#define DEF_LEVENSHTEIN(name, mode)               \
-static VALUE                                      \
-rb_amatch_ ## name(VALUE self, VALUE strings)     \
-{                                                 \
-    return levenshtein_iterate_strings(self, strings, mode);  \
+#define CAST2FLOAT(obj) \
+    if (TYPE(obj) != T_FLOAT && rb_respond_to(obj, id_to_f))    \
+            obj = rb_funcall(obj, id_to_f, 0, 0);               \
+        else                                                    \
+            Check_Type(obj, T_FLOAT)
+#define FLOAT2C(obj) RFLOAT(obj)->value
+
+#define DEF_LEVENSHTEIN(name, mode)                             \
+static VALUE                                                    \
+rb_amatch_ ## name(VALUE self, VALUE strings)                   \
+{                                                               \
+    return levenshtein_iterate_strings(self, strings, mode);    \
 }
 
 typedef struct AmatchStruct {
-    int         subw;
-    int         delw;
-    int         insw;
+    double      subw;
+    double      delw;
+    double      insw;
     char        *pattern;
     char        pattern_len;
     PairArray   *pattern_pair_array;
@@ -81,7 +91,8 @@ static VALUE amatch_compute_levenshtein_distance(
     int string_len;
     char *string_ptr;
     Vector *v[2];
-    int weight,i, j, tmpi;
+    double weight, tmp;
+    int  i, j;
     int c = 0, p = 1;
 
     Check_Type(string, T_STRING);
@@ -125,7 +136,7 @@ static VALUE amatch_compute_levenshtein_distance(
     }
     switch (mode) {
         case MATCH:
-            result = INT2FIX(vector_last(v[c]));
+            result = rb_float_new(vector_last(v[c]));
             break;
         case MATCHR:
             result = rb_float_new(
@@ -133,17 +144,19 @@ static VALUE amatch_compute_levenshtein_distance(
             );
             break;
         case SEARCH:
-            tmpi = vector_minimum(v[c]);
-            result = tmpi < 0 ? INT2FIX(amatch->pattern_len) : INT2FIX(tmpi);
+            tmp = vector_minimum(v[c]);
+            result = tmp < 0 ?
+                rb_float_new((double) amatch->pattern_len) : rb_float_new(tmp);
             break;
         case SEARCHR:
-            tmpi = vector_minimum(v[c]);
+            tmp = vector_minimum(v[c]);
             result = rb_float_new(
-                tmpi < 0 ? 1.0 : (double) tmpi / amatch->pattern_len
+                tmp < 0 ? 1.0 : (double) tmp / amatch->pattern_len
             );
             break;
         case COMPARE:
-            result = INT2FIX((string_len < amatch->pattern_len ? -1 : 1) *
+            result = rb_float_new(
+                (double) (string_len < amatch->pattern_len ? -1 : 1) *
                 vector_last(v[c]));
             break;
         case COMPARER:
@@ -190,6 +203,7 @@ static VALUE amatch_compute_pair_distance(
 
 static void rb_amatch_free(Amatch *amatch)
 {
+    MEMZERO(amatch->pattern, char, amatch->pattern_len);
     xfree(amatch->pattern);
     MEMZERO(amatch, Amatch, 1);
     xfree(amatch);
@@ -223,13 +237,13 @@ static VALUE rb_amatch_pattern_set(VALUE self, VALUE pattern)
     return Qnil;
 }
 
-DEF_AMATCH_READER(subw, INT2FIX)
-DEF_AMATCH_READER(delw, INT2FIX)
-DEF_AMATCH_READER(insw, INT2FIX)
+DEF_AMATCH_READER(subw, rb_float_new)
+DEF_AMATCH_READER(delw, rb_float_new)
+DEF_AMATCH_READER(insw, rb_float_new)
 
-DEF_AMATCH_WRITER(subw, T_FIXNUM, FIX2INT)
-DEF_AMATCH_WRITER(delw, T_FIXNUM, FIX2INT)
-DEF_AMATCH_WRITER(insw, T_FIXNUM, FIX2INT)
+DEF_AMATCH_WRITER(subw, float, CAST2FLOAT, FLOAT2C, >= 0)
+DEF_AMATCH_WRITER(delw, float, CAST2FLOAT, FLOAT2C, >= 0)
+DEF_AMATCH_WRITER(insw, float, CAST2FLOAT, FLOAT2C, >= 0)
 
 static VALUE rb_amatch_resetw(VALUE self)
 {
@@ -252,7 +266,7 @@ static VALUE levenshtein_iterate_strings(VALUE self, VALUE strings, char mode)
     if (TYPE(strings) == T_STRING) {
         return amatch_compute_levenshtein_distance(amatch, strings, mode);
     } else {
-        Check_Type(strings, T_ARRAY); /* TODO iterate with #each */
+        Check_Type(strings, T_ARRAY);
         int i;
         VALUE result = rb_ary_new2(RARRAY(strings)->len);
         for (i = 0; i < RARRAY(strings)->len; i++) {
@@ -286,7 +300,7 @@ static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
     if (TYPE(strings) == T_STRING) {
         result = amatch_compute_pair_distance(amatch, strings, regexp);
     } else {
-        Check_Type(strings, T_ARRAY); /* TODO iterate with #each */
+        Check_Type(strings, T_ARRAY);
         int i;
         result = rb_ary_new2(RARRAY(strings)->len);
         for (i = 0; i < RARRAY(strings)->len; i++) {
@@ -326,5 +340,6 @@ void Init_amatch()
     rb_define_method(rb_cAmatch, "searchr", rb_amatch_searchr, 1);
     rb_define_method(rb_cAmatch, "pair_distance", rb_amatch_pair_distance, -1);
     id_split = rb_intern("split");
+    id_to_f = rb_intern("to_f");
 }
     /* vim: set et cin sw=4 ts=4: */

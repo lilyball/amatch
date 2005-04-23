@@ -4,15 +4,15 @@
 #include "ruby.h"
 
 typedef struct VectorStruct {
-    int *ptr;
+    double *ptr;
     int len;
 } Vector;
 
 Vector *Vector_new(int len);
 void vector_print(Vector *v);
 void vector_destroy(Vector *v);
-int vector_minimum(Vector *v);
-int vector_last(Vector *v);
+double vector_minimum(Vector *v);
+double vector_last(Vector *v);
 
 #endif
   /* vim: set et cindent sw=4 ts=4: */ 
