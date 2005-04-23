@@ -85,7 +85,7 @@ EOF
   #  '--title' <<  'Rake -- Ruby Make' <<
   #  '--main' << 'README' <<
   #  '--line-numbers'
-  s.test_files << 'tests/test.rb'
+  s.test_files << 'tests/runner.rb'
 
   #### Author and project details.
 
