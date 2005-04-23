@@ -9,6 +9,7 @@ class TC_PairDistance < Test::Unit::TestCase
     @empty = Amatch.new('')
     @france = Amatch.new('republic of france')
     @germany = Amatch.new('federal republic of germany')
+    @csv = Amatch.new('foo,bar,baz')
   end
 
   def test_empty
@@ -49,6 +50,25 @@ class TC_PairDistance < Test::Unit::TestCase
     assert_in_delta 0.6,        @single.pair_distance('aaa test bbb'), D
     assert_in_delta 0.6,        @single.pair_distance('test aaa bbb'), D
     assert_in_delta 0.6,        @single.pair_distance('bbb aaa test'), D
+  end
+
+  def test_csv
+    assert_in_delta 0,          @csv.pair_distance('', /,/), D
+    assert_in_delta 0.5,        @csv.pair_distance('foo', /,/), D
+    assert_in_delta 0.5,        @csv.pair_distance('bar', /,/), D
+    assert_in_delta 0.5,        @csv.pair_distance('baz', /,/), D
+    assert_in_delta 0.8,        @csv.pair_distance('foo,bar', /,/), D
+    assert_in_delta 0.8,        @csv.pair_distance('bar,foo', /,/), D
+    assert_in_delta 0.8,        @csv.pair_distance('bar,baz', /,/), D
+    assert_in_delta 0.8,        @csv.pair_distance('baz,bar', /,/), D
+    assert_in_delta 0.8,        @csv.pair_distance('foo,baz', /,/), D
+    assert_in_delta 0.8,        @csv.pair_distance('baz,foo', /,/), D
+    assert_in_delta 1,          @csv.pair_distance('foo,bar,baz', /,/), D
+    assert_in_delta 1,          @csv.pair_distance('foo,baz,bar', /,/), D
+    assert_in_delta 1,          @csv.pair_distance('baz,foo,bar', /,/), D
+    assert_in_delta 1,          @csv.pair_distance('baz,bar,foo', /,/), D
+    assert_in_delta 1,          @csv.pair_distance('bar,foo,baz', /,/), D
+    assert_in_delta 1,          @csv.pair_distance('bar,baz,foo', /,/), D
   end
 end
   # vim: set et sw=2 ts=2:
