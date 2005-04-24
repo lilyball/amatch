@@ -35,16 +35,6 @@ class TC_Levenshtein < Test::Unit::TestCase
     assert_in_delta 4,     @simple.l_search('aaaaaaaaa'), D
   end
 
-  def test_compare
-    assert_in_delta -4,    @simple.l_compare(''), D
-    assert_in_delta 3,     @simple.l_compare('taex'), D
-    assert_in_delta 6,     @simple.l_compare('aaatestbbb'), D
-    assert_in_delta 0,     @simple.l_compare('test'), D
-    assert_in_delta -2,    @simple.l_compare('tex'), D
-    assert_in_delta 4,     @simple.l_compare('wxyz'), D
-    assert_raises(TypeError) { @simple.l_match(:foo) }
-  end
-
   def assert_in_delta_array(left, right, delta = D)
     left.size.times do |i|
       assert_in_delta left[i], right[i], delta
@@ -54,7 +44,6 @@ class TC_Levenshtein < Test::Unit::TestCase
   def test_array_result
   return
     assert_in_delta_array [2, 0],    @simple.l_match(["tets", "test"])
-    assert_in_delta_array [2, 0],    @simple.l_compare(["tets", "test"])
     assert_in_delta_array [1, 0],    @simple.l_search(["tetsaaa", "testaaa"])
     assert_raises(TypeError) { @simple.l_match([:foo, "bar"]) }
   end

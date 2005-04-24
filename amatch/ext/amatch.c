@@ -172,38 +172,6 @@ static VALUE amatch_levenshtein_search(Amatch *amatch, VALUE string)
     return result;
 }
 
-static VALUE amatch_levenshtein_compare(Amatch *amatch, VALUE string)
-{
-    VALUE result;
-    char *a_ptr, *b_ptr;
-    int a_len, b_len;
-    double *v[2] = { NULL, NULL }, weight;
-    int  i, j, c, p, sign;
-
-    Check_Type(string, T_STRING);
-    DONT_OPTIMIZE
-
-    v[0] = ALLOC_N(double, b_len + 1);
-    for (i = 0; i <= b_len; i++)
-        v[0][i] = i * amatch->deletion;
-    v[1] = ALLOC_N(double, b_len + 1);
-    for (i = 0; i <= b_len; i++)
-        v[1][i] = i * amatch->deletion;
-
-    COMPUTE_LEVENSHTEIN_DISTANCES
-    
-    sign = 1;
-    if (b_ptr == RSTRING(string)->ptr) {
-        sign = b_len < a_len ? -1 : 1;
-    } else {
-        sign = a_len < b_len ? -1 : 1;
-    }
-    result = rb_float_new(sign * v[p][b_len]);
-    free(v[0]);
-    free(v[1]);
-
-    return result;
-}
 /*
  * Pair distances are computed here:
  */
@@ -441,11 +409,6 @@ static VALUE rb_amatch_l_search(VALUE self, VALUE strings)
     return iterate_strings(self, strings, amatch_levenshtein_search);
 }
 
-static VALUE rb_amatch_l_compare(VALUE self, VALUE strings)
-{                                                                            
-    return iterate_strings(self, strings, amatch_levenshtein_compare);
-}
-
 static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
 {                                                                            
     VALUE result, strings, regexp = Qnil;
@@ -505,7 +468,6 @@ void Init_amatch()
     rb_define_method(rb_cAmatch, "reset_weights", rb_amatch_reset_weights, 0);
 
     rb_define_method(rb_cAmatch, "l_match", rb_amatch_l_match, 1);
-    rb_define_method(rb_cAmatch, "l_compare", rb_amatch_l_compare, 1);
     rb_define_method(rb_cAmatch, "l_search", rb_amatch_l_search, 1);
     rb_define_method(rb_cAmatch, "hamming", rb_amatch_hamming, 1);
     rb_define_method(rb_cAmatch, "pair_distance", rb_amatch_pair_distance, -1);
