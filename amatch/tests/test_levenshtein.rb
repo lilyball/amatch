@@ -34,7 +34,7 @@ class TC_Levenshtein < Test::Unit::TestCase
     assert_in_delta 3,     @simple.l_search('aaataexbbb'), D
     assert_in_delta 4,     @simple.l_search('aaaaaaaaa'), D
   end
-
+=begin
   def test_compare
     assert_in_delta -4,    @simple.l_compare(''), D
     assert_in_delta 3,     @simple.l_compare('taex'), D
@@ -44,6 +44,7 @@ class TC_Levenshtein < Test::Unit::TestCase
     assert_in_delta 4,     @simple.l_compare('wxyz'), D
     assert_raises(TypeError) { @simple.l_match(:foo) }
   end
+=end
 
   def assert_in_delta_array(left, right, delta = D)
     left.size.times do |i|
@@ -63,35 +64,34 @@ class TC_Levenshtein < Test::Unit::TestCase
     assert_in_delta 1, @simple.substitution, D
     assert_in_delta 1, @simple.insertion, D
     assert_in_delta 1, @simple.deletion, D
-    @simple.substitution = 2
-    assert_in_delta 2, @simple.substitution, D
-    assert_in_delta 2, @simple.l_match('tast'), D
+    @simple.insertion = 1
+    @simple.substitution = @simple.deletion = 1000
+    assert_in_delta 1, @simple.l_match('tst'), D
+    assert_in_delta 1, @simple.l_search('bbbtstccc'), D
+    @simple.deletion = 1
+    @simple.substitution = @simple.insertion = 1000
+    assert_in_delta 1, @simple.l_match('tedst'), D
+    assert_in_delta 1, @simple.l_search('bbbtedstccc'), D
     @simple.substitution = 1
+    @simple.deletion = @simple.insertion = 1000
     assert_in_delta 1, @simple.l_match('tast'), D
-    @simple.insertion = 2
-    assert_in_delta 2, @simple.insertion, D
-    assert_in_delta 2, @simple.l_match('teist'), D
-    @simple.deletion = 2
-    assert_in_delta 2, @simple.deletion, D
-    assert_in_delta 2, @simple.l_match('tst'), D
+    assert_in_delta 1, @simple.l_search('bbbtastccc'), D
+    @simple.insertion = 0.5
+    @simple.substitution = @simple.deletion = 1000
+    assert_in_delta 0.5, @simple.l_match('tst'), D
+    assert_in_delta 0.5, @simple.l_search('bbbtstccc'), D
+    @simple.deletion = 0.5
+    @simple.substitution = @simple.insertion = 1000
+    assert_in_delta 0.5, @simple.l_match('tedst'), D
+    assert_in_delta 0.5, @simple.l_search('bbbtedstccc'), D
+    @simple.substitution = 0.5
+    @simple.deletion = @simple.insertion = 1000
+    assert_in_delta 0.5, @simple.l_match('tast'), D
+    assert_in_delta 0.5, @simple.l_search('bbbtastccc'), D
     @simple.reset_weights
     assert_in_delta 1, @simple.substitution, D
     assert_in_delta 1, @simple.insertion, D
     assert_in_delta 1, @simple.deletion, D
-    @simple.substitution = 0.5
-    assert_in_delta 0.5, @simple.substitution, D
-    assert_in_delta 0.5, @simple.l_match('tast'), D
-    assert_in_delta 0.5, @simple.l_search('aaatastbbb'), D
-    @simple.substitution = 1
-    assert_in_delta 1, @simple.l_match('tast'), D
-    @simple.insertion = 0.5 
-    assert_in_delta 0.5, @simple.insertion, D
-    assert_in_delta 0.5, @simple.l_match('teist'), D
-    assert_in_delta 0.5, @simple.l_search('aaateistbbb'), D
-    @simple.deletion = 0.5
-    assert_in_delta 0.5, @simple.deletion, D
-    assert_in_delta 0.5, @simple.l_match('tst'), D
-    assert_in_delta 0.5, @simple.l_search('aaatetbbb'), D
   end
 
 

@@ -106,11 +106,11 @@ static void amatch_reset_weights(amatch)
             /* Bellman's principle of optimality: */                        \
             weight = v[p][j - 1] +                                          \
                 (a_ptr[i - 1] == b_ptr[j - 1] ? 0 : amatch->substitution);  \
-             if (weight > v[p][j] + amatch->deletion) {                     \
-                 weight = v[p][j] + amatch->deletion;                       \
-             }                                                              \
-            if (weight > v[c][j - 1] + amatch->insertion) {                 \
-                weight = v[c][j - 1] + amatch->insertion;                   \
+            if (weight > v[p][j] + amatch->insertion) {                     \
+                 weight = v[p][j] + amatch->insertion;                      \
+            }                                                               \
+            if (weight > v[c][j - 1] + amatch->deletion) {                  \
+                weight = v[c][j - 1] + amatch->deletion;                    \
             }                                                               \
             v[c][j] = weight;                                               \
         }                                                                   \
@@ -127,14 +127,14 @@ static VALUE amatch_levenshtein_match(Amatch *amatch, VALUE string)
     int  i, j, c, p;
 
     Check_Type(string, T_STRING);
-    OPTIMIZE_TIME
+    DONT_OPTIMIZE
 
     v[0] = ALLOC_N(double, b_len + 1);
     for (i = 0; i <= b_len; i++)
-        v[0][i] = i * amatch->insertion;
+        v[0][i] = i * amatch->deletion;
     v[1] = ALLOC_N(double, b_len + 1);
     for (i = 0; i <= b_len; i++)
-        v[1][i] = i * amatch->insertion;
+        v[1][i] = i * amatch->deletion;
 
     COMPUTE_LEVENSHTEIN_DISTANCES
 
@@ -181,14 +181,14 @@ static VALUE amatch_levenshtein_compare(Amatch *amatch, VALUE string)
     int  i, j, c, p, sign;
 
     Check_Type(string, T_STRING);
-    OPTIMIZE_TIME
+    DONT_OPTIMIZE
 
     v[0] = ALLOC_N(double, b_len + 1);
     for (i = 0; i <= b_len; i++)
-        v[0][i] = i * amatch->insertion;
+        v[0][i] = i * amatch->deletion;
     v[1] = ALLOC_N(double, b_len + 1);
     for (i = 0; i <= b_len; i++)
-        v[1][i] = i * amatch->insertion;
+        v[1][i] = i * amatch->deletion;
 
     COMPUTE_LEVENSHTEIN_DISTANCES
     
