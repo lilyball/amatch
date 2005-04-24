@@ -483,10 +483,10 @@ void Init_amatch()
     rb_define_alloc_func(rb_cAmatch, rb_amatch_s_allocate);
     rb_define_method(rb_cAmatch, "initialize", rb_amatch_initialize, 1);
 
+    AMATCH_ACCESSOR(pattern);
     AMATCH_ACCESSOR(substitution);
     AMATCH_ACCESSOR(deletion);
     AMATCH_ACCESSOR(insertion);
-    AMATCH_ACCESSOR(pattern);
     rb_define_method(rb_cAmatch, "reset_weights", rb_amatch_reset_weights, 0);
 
     rb_define_method(rb_cAmatch, "l_match", rb_amatch_l_match, 1);
