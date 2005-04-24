@@ -53,6 +53,19 @@ rb_amatch_ ## name(VALUE self, VALUE strings)                   \
     return levenshtein_iterate_strings(self, strings, mode);    \
 }
 
+#define OPTIMIZE_TIME                                   \
+    if (amatch->pattern_len < RSTRING(string)->len) {   \
+        a_ptr = amatch->pattern;                        \
+        a_len = amatch->pattern_len;                    \
+        b_ptr = RSTRING(string)->ptr;                   \
+        b_len = RSTRING(string)->len;                   \
+    } else {                                            \
+        a_ptr = RSTRING(string)->ptr;                   \
+        a_len = RSTRING(string)->len;                   \
+        b_ptr = amatch->pattern;                        \
+        b_len = amatch->pattern_len;                    \
+    }
+
 /*
  * The core object of the Amatch class
  */
@@ -91,42 +104,41 @@ static VALUE amatch_compute_levenshtein_distance(
         Amatch *amatch, VALUE string, char mode)
 {
     VALUE result;
-    int string_len;
-    char *string_ptr;
+    char *a_ptr, *b_ptr;
+    int a_len, b_len;
     double *v[2] = { NULL, NULL }, weight, min;
-    int  i, j;
-    int c = 0, p = 1;
+    int  i, j, c, p, sign;
 
     Check_Type(string, T_STRING);
-    string_ptr = RSTRING(string)->ptr;
-    string_len = RSTRING(string)->len;
+    OPTIMIZE_TIME
 
-    v[0] = ALLOC_N(double, string_len + 1);
+    v[0] = ALLOC_N(double, b_len + 1);
+    v[1] = ALLOC_N(double, b_len + 1);
     switch (mode) {
         case L_MATCH:
         case L_COMPARE:
-            for (i = 0; i <= string_len; i++)
+            for (i = 0; i <= b_len; i++)
                 v[0][i] = i * amatch->insertion;
+            for (i = 0; i <= b_len; i++)
+                v[1][i] = i * amatch->insertion;
             break;
         case L_SEARCH:
-            MEMZERO(v[0], double, string_len + 1);
+            MEMZERO(v[0], double, b_len + 1);
+            MEMZERO(v[1], double, b_len + 1);
             break;
         default:
             rb_raise(rb_eFatal,
                 "unknown mode in amatch_compute_levenshtein_distance");
     }
 
-    v[1] = ALLOC_N(double, string_len + 1);
-    for (i = 1, c = 0, p = 1; i <= amatch->pattern_len; i++) {
+    for (i = 1, c = 0, p = 1; i <= a_len; i++) {
         c = i % 2;                      /* current row */
         p = (i + 1) % 2;                /* previous row */
         v[c][0] = i * amatch->deletion; /* first column */
-        for (j = 1; j <= string_len; j++) {
+        for (j = 1; j <= b_len; j++) {
             /* Bellman's principle of optimality: */
             weight = v[p][j - 1] +
-                (amatch->pattern[i - 1] == string_ptr[j - 1] ?
-                    0 :
-                    amatch->substitution);
+                (a_ptr[i - 1] == b_ptr[j - 1] ? 0 : amatch->substitution);
              if (weight > v[p][j] + 1) {
                  weight = v[p][j] + amatch->deletion;
              }
@@ -140,18 +152,22 @@ static VALUE amatch_compute_levenshtein_distance(
     }
     switch (mode) {
         case L_MATCH:
-            result = rb_float_new(v[p][string_len]);
+            result = rb_float_new(v[p][b_len]);
             break;
         case L_SEARCH:
-            for (i = 0, min = amatch->pattern_len; i <= string_len; i++) {
+            for (i = 0, min = a_len; i <= b_len; i++) {
                 if (v[p][i] < min) min = v[p][i];
             }
             result = rb_float_new(min);
             break;
         case L_COMPARE:
-            result = rb_float_new(
-                (double) (string_len < amatch->pattern_len ? -1 : 1) *
-                v[p][string_len]);
+            sign = 1;
+            if (b_ptr == RSTRING(string)->ptr) {
+                sign = b_len < a_len ? -1 : 1;
+            } else {
+                sign = a_len < b_len ? -1 : 1;
+            }
+            result = rb_float_new(sign * v[p][b_len]);
             break;
         default:
             rb_raise(rb_eFatal,
@@ -207,22 +223,18 @@ static VALUE amatch_compute_pair_distance(
 
 static VALUE amatch_hamming(Amatch *amatch, VALUE string)
 {
-    char *string_ptr;
-    int i, string_len;
-    int result = 0;
+    char *a_ptr, *b_ptr;
+    int a_len, b_len;
+    int i, result;
     
     Check_Type(string, T_STRING);
-    string_ptr = RSTRING(string)->ptr;
-    string_len = RSTRING(string)->len;
-    if (string_len > amatch->pattern_len) {
-        result += string_len - amatch->pattern_len;
-    }
-    for (i = 0; i < amatch->pattern_len; i++) {
-        if (i >= string_len) {
-            result +=  amatch->pattern_len - string_len;
+    OPTIMIZE_TIME
+    for (i = 0, result = b_len - a_len; i < a_len; i++) {
+        if (i >= b_len) {
+            result +=  a_len - b_len;
             break;
         }
-        if (string_ptr[i] != amatch->pattern[i]) result++;
+        if (b_ptr[i] != a_ptr[i]) result++;
     }
     return INT2FIX(result);
 }
@@ -234,20 +246,11 @@ static VALUE amatch_hamming(Amatch *amatch, VALUE string)
 static VALUE amatch_lc_subsequence(Amatch *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
-    int result, c, p, i, j, a_len, b_len, *l[2];
+    int a_len, b_len;
+    int result, c, p, i, j, *l[2];
     
     Check_Type(string, T_STRING);
-    if (amatch->pattern_len < RSTRING(string)->len) {
-        a_ptr = amatch->pattern;
-        a_len = amatch->pattern_len;
-        b_ptr = RSTRING(string)->ptr;
-        b_len = RSTRING(string)->len;
-    } else {
-        a_ptr = RSTRING(string)->ptr;
-        a_len = RSTRING(string)->len;
-        b_ptr = amatch->pattern;
-        b_len = amatch->pattern_len;
-    }
+    OPTIMIZE_TIME
 
     if (a_len == 0 || b_len == 0) return INT2FIX(0);
 
@@ -274,26 +277,17 @@ static VALUE amatch_lc_subsequence(Amatch *amatch, VALUE string)
 }
 
 /*
- * Longest Common Substring computation
+ * Longest Common Subsequence computation
  */
 
 static VALUE amatch_lc_substring(Amatch *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
-    int result, c, p, i, j, a_len, b_len, *l[2];
+    int a_len, b_len;
+    int result, c, p, i, j, *l[2];
     
     Check_Type(string, T_STRING);
-    if (amatch->pattern_len < RSTRING(string)->len) {
-        a_ptr = amatch->pattern;
-        a_len = amatch->pattern_len;
-        b_ptr = RSTRING(string)->ptr;
-        b_len = RSTRING(string)->len;
-    } else {
-        a_ptr = RSTRING(string)->ptr;
-        a_len = RSTRING(string)->len;
-        b_ptr = amatch->pattern;
-        b_len = amatch->pattern_len;
-    }
+    OPTIMIZE_TIME
 
     if (a_len == 0 || b_len == 0) return INT2FIX(0);
 
