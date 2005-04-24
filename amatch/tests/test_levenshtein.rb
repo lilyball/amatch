@@ -68,34 +68,34 @@ class TC_Levenshtein < Test::Unit::TestCase
   end
 
   def test_weights
-    assert_in_delta 1, @matcher.subw, D
-    assert_in_delta 1, @matcher.insw, D
-    assert_in_delta 1, @matcher.delw, D
-    @matcher.subw = 2
-    assert_in_delta 2, @matcher.subw, D
+    assert_in_delta 1, @matcher.substitution, D
+    assert_in_delta 1, @matcher.insertion, D
+    assert_in_delta 1, @matcher.deletion, D
+    @matcher.substitution = 2
+    assert_in_delta 2, @matcher.substitution, D
     assert_in_delta 2, @matcher.match('tast'), D
-    @matcher.subw = 1
+    @matcher.substitution = 1
     assert_in_delta 1, @matcher.match('tast'), D
-    @matcher.insw = 2
-    assert_in_delta 2, @matcher.insw, D
+    @matcher.insertion = 2
+    assert_in_delta 2, @matcher.insertion, D
     assert_in_delta 2, @matcher.match('teist'), D
-    @matcher.delw = 2
-    assert_in_delta 2, @matcher.delw, D
+    @matcher.deletion = 2
+    assert_in_delta 2, @matcher.deletion, D
     assert_in_delta 2, @matcher.match('tst'), D
     @matcher.reset_weights
-    assert_in_delta 1, @matcher.subw, D
-    assert_in_delta 1, @matcher.insw, D
-    assert_in_delta 1, @matcher.delw, D
-    @matcher.subw = 0.5
-    assert_in_delta 0.5, @matcher.subw, D
+    assert_in_delta 1, @matcher.substitution, D
+    assert_in_delta 1, @matcher.insertion, D
+    assert_in_delta 1, @matcher.deletion, D
+    @matcher.substitution = 0.5
+    assert_in_delta 0.5, @matcher.substitution, D
     assert_in_delta 0.5, @matcher.match('tast'), D
-    @matcher.subw = 1
+    @matcher.substitution = 1
     assert_in_delta 1, @matcher.match('tast'), D
-    @matcher.insw = 0.5 
-    assert_in_delta 0.5, @matcher.insw, D
+    @matcher.insertion = 0.5 
+    assert_in_delta 0.5, @matcher.insertion, D
     assert_in_delta 0.5, @matcher.match('teist'), D
-    @matcher.delw = 0.5
-    assert_in_delta 0.5, @matcher.delw, D
+    @matcher.deletion = 0.5
+    assert_in_delta 0.5, @matcher.deletion, D
     assert_in_delta 0.5, @matcher.match('tst'), D
   end
 
@@ -103,9 +103,9 @@ class TC_Levenshtein < Test::Unit::TestCase
   def test_pattern_setting
     assert_raises(TypeError) { @matcher.pattern = :something }
     @matcher.pattern = 'test'
-    assert_raises(TypeError) { @matcher.subw = :something }
-    assert_raises(TypeError) { @matcher.insw = :something }
-    assert_raises(TypeError) { @matcher.delw = :something }
+    assert_raises(TypeError) { @matcher.substitution = :something }
+    assert_raises(TypeError) { @matcher.insertion = :something }
+    assert_raises(TypeError) { @matcher.deletion = :something }
     assert_in_delta 0, @matcher.match('test'), D
   end
 end

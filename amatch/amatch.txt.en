@@ -20,12 +20,30 @@ SYNOPSIS
     p m.hamming("pattren")
     p m.hammingr("pattren")
     p m.pair_distance("pattren")
+    p m.pair_distance("pattren", /t+/)
+    p m.lc_subsequence("pattren")
+    p m.lc_substring("pattren")
 
 DESCRIPTION
 
 This class enables your programs to do approximate matching, searching and
-comparing of strings. It uses an algorithm that calculates the Levenshtein
-distance between those strings to implement those features. XXX
+comparing of strings. It uses several algorithms that compute the Levenshtein
+edit distance, the Hamming distance, the longest common subsequence length, the
+longest common substring length, and the pair distance metric.
+
+CONSTRUCTOR
+
+- Amatch#new(pattern)
+
+constructs an Amatch object and initializes it with 'pattern'.
+
+GENERAL METHODS
+
+- Amatch#pattern         Returns pattern string to match against
+
+- Amatch#pattern=(value) Sets the pattern string to value
+
+LEVENSHTEIN EDIT DISTANCE
 
 The Levenshtein edit distance is defined as the minimal costs involved to
 transform one string into another by using three elementary operations:
@@ -41,30 +59,23 @@ You can als use different weights for every operation to prefer special
 operations over others. There are three different kinds of match methods
 defined in this class: "match" computes the Levenshtein distance between a
 pattern and some strings, "search" searches in some text for a special pattern
-returning a minimal distance, "compare" calculates a value that can be used to
+returning a minimal distance, "compare" computes a value that can be used to
 define a partial order between strings in relation to a given pattern. It's
 also possible to compute a relative distance. This floating point value is
 computed as absolute distance / length of search pattern.
 
-CONSTRUCTOR
+RELATED METHODS
 
-- Amatch#new(pattern)
+These are the accessor methods for the attributes substitution, deletion, and
+insertion.
 
-constructs an Amatch object and initializes it with 'pattern'. If no 'pattern'
-is given it has to be set with Amatch#pattern before matching.
+- Amatch#substitution[=] weight of one substitution (type Float and >= 0)
 
-METHODS
+- Amatch#deletion[=]     weight of one deletion (type Float and >= 0)
 
-- Amatch#pattern    pattern string to match against
+- Amatch#insertion[=]    weight of one insertion (type Float and >= 0)
 
-- Amatch#subw       weight of one substitution (type Float and >= 0)
-
-- Amatch#delw       weight of one deletion (type Float and >= 0)
-
-- Amatch#insw       weight of one insertion (type Float and >= 0)
-
-- Amatch#reset_weights or
-  Amatch#resetw        resets all weights to their default values (=1).
+- Amatch#reset_weights   resets all weights to their default values (=1).
 
 The following methods require the parameter 'strings'. This parameter can be of
 type String or Array of Strings. The method executes the matching operation and
@@ -104,6 +115,11 @@ returns an array of numbers.
   result value is negative if the strings are shorter than 'pattern' or
   positive else.
 
+
+HAMMING DISTANCE
+
+XXX
+
 - Amatch#hamming(strings)
 
   calculates the absolute hamming distance(s) between 'pattern' and 'strings' =
@@ -114,9 +130,24 @@ returns an array of numbers.
   does the same as Amatch#hamming but divides the edit distance by the length
   of 'pattern' and returns the value as float.
 
+
+LONGEST COMMON SUBSEQUENCE LENGTH
+
+XXX
+
+LONGEST COMMON SUBSTRING LENGTH
+
+XXX
+
+PAIR DISTANCE METRIC
+
+XXX
+
+RELATED METHODS
+
 - Amatch#pair_distance(strings, regexp = /\s+/)
   calculates the pair distance(s) between 'pattern' and 'strings'. The argument
-  regexp is used to split the pattern and strings into tokens first, it
+  regexp is used to split the pattern and strings into tokens first. It
   defaults to /\s+/. If the splitting should be omitted, call the method with
   nil as regexp explicitly. See also Amatch#pattern.
 

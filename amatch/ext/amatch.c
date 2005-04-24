@@ -59,9 +59,9 @@ rb_amatch_ ## name(VALUE self, VALUE strings)                   \
  */
 
 typedef struct AmatchStruct {
-    double      subw;
-    double      delw;
-    double      insw;
+    double      substitution;
+    double      deletion;
+    double      insertion;
     char        *pattern;
     char        pattern_len;
     PairArray   *pattern_pair_array;
@@ -77,9 +77,9 @@ static Amatch *Amatch_allocate()
 static void amatch_resetw(amatch)
     Amatch *amatch;
 {
-    amatch->subw    = 1;
-    amatch->delw    = 1;
-    amatch->insw    = 1;
+    amatch->substitution = 1;
+    amatch->deletion     = 1;
+    amatch->insertion    = 1;
 }
 
 /*
@@ -109,7 +109,7 @@ static VALUE amatch_compute_levenshtein_distance(
         case L_MATCHR:
         case COMPARE:
         case COMPARER:
-            for (i = 0; i <= v[0]->len; i++) v[0]->ptr[i] = i * amatch->insw;
+            for (i = 0; i <= v[0]->len; i++) v[0]->ptr[i] = i * amatch->insertion;
             break;
         case SEARCH:
         case SEARCHR:
@@ -124,16 +124,18 @@ static VALUE amatch_compute_levenshtein_distance(
     for (i = 1; i <= amatch->pattern_len; i++) {
         c = i % 2;                /* current row */
         p = (i + 1) % 2;          /* previous row */
-        v[c]->ptr[0] = i * amatch->delw;    /* first column */
+        v[c]->ptr[0] = i * amatch->deletion;    /* first column */
         for (j = 1; j <= string_len; j++) {
             /* Bellman's principle of optimality: */
             weight = v[p]->ptr[j - 1] +
-                (amatch->pattern[i - 1] == string_ptr[j - 1] ? 0 : amatch->subw);
+                (amatch->pattern[i - 1] == string_ptr[j - 1] ?
+                    0 :
+                    amatch->substitution);
              if (weight > v[p]->ptr[j] + 1) {
-                 weight = v[p]->ptr[j] + amatch->delw;
+                 weight = v[p]->ptr[j] + amatch->deletion;
              }
             if (weight > v[c]->ptr[j - 1] + 1) {
-                weight = v[c]->ptr[j - 1] + amatch->insw;
+                weight = v[c]->ptr[j - 1] + amatch->insertion;
             }
             v[c]->ptr[j] = weight;
         }
@@ -441,13 +443,13 @@ static VALUE rb_amatch_pattern_set(VALUE self, VALUE pattern)
     return Qnil;
 }
 
-DEF_AMATCH_READER(subw, rb_float_new)
-DEF_AMATCH_READER(delw, rb_float_new)
-DEF_AMATCH_READER(insw, rb_float_new)
+DEF_AMATCH_READER(substitution, rb_float_new)
+DEF_AMATCH_READER(deletion, rb_float_new)
+DEF_AMATCH_READER(insertion, rb_float_new)
 
-DEF_AMATCH_WRITER(subw, float, CAST2FLOAT, FLOAT2C, >= 0)
-DEF_AMATCH_WRITER(delw, float, CAST2FLOAT, FLOAT2C, >= 0)
-DEF_AMATCH_WRITER(insw, float, CAST2FLOAT, FLOAT2C, >= 0)
+DEF_AMATCH_WRITER(substitution, float, CAST2FLOAT, FLOAT2C, >= 0)
+DEF_AMATCH_WRITER(deletion, float, CAST2FLOAT, FLOAT2C, >= 0)
+DEF_AMATCH_WRITER(insertion, float, CAST2FLOAT, FLOAT2C, >= 0)
 
 static VALUE rb_amatch_resetw(VALUE self)
 {
@@ -480,7 +482,8 @@ static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
     rb_scan_args(argc, argv, "11", &strings, &regexp);
     use_regexp = NIL_P(regexp) && argc != 2;
     if (TYPE(strings) == T_STRING) {
-        result = amatch_compute_pair_distance(amatch, strings, regexp, use_regexp);
+        result = amatch_compute_pair_distance(amatch, strings, regexp,
+            use_regexp);
     } else {
         Check_Type(strings, T_ARRAY);
         int i;
@@ -494,7 +497,8 @@ static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
                         "NilClass" : rb_class2name(CLASS_OF(string)));
             }
             rb_ary_push(result,
-                amatch_compute_pair_distance(amatch, string, regexp, use_regexp));
+                amatch_compute_pair_distance(amatch, string, regexp,
+                    use_regexp));
         }
     }
     pair_array_destroy(amatch->pattern_pair_array);
@@ -528,11 +532,10 @@ void Init_amatch()
     rb_define_alloc_func(rb_cAmatch, rb_amatch_s_allocate);
     rb_define_method(rb_cAmatch, "initialize", rb_amatch_initialize, 1);
 
-    AMATCH_ACCESSOR(subw);
-    AMATCH_ACCESSOR(delw);
-    AMATCH_ACCESSOR(insw);
+    AMATCH_ACCESSOR(substitution);
+    AMATCH_ACCESSOR(deletion);
+    AMATCH_ACCESSOR(insertion);
     AMATCH_ACCESSOR(pattern);
-    rb_define_method(rb_cAmatch, "resetw", rb_amatch_resetw, 0);
     rb_define_method(rb_cAmatch, "reset_weights", rb_amatch_resetw, 0);
 
     rb_define_method(rb_cAmatch, "match", rb_amatch_match, 1);
