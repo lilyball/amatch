@@ -34,7 +34,7 @@ class TC_Levenshtein < Test::Unit::TestCase
     assert_in_delta 3,     @simple.l_search('aaataexbbb'), D
     assert_in_delta 4,     @simple.l_search('aaaaaaaaa'), D
   end
-=begin
+
   def test_compare
     assert_in_delta -4,    @simple.l_compare(''), D
     assert_in_delta 3,     @simple.l_compare('taex'), D
@@ -44,7 +44,6 @@ class TC_Levenshtein < Test::Unit::TestCase
     assert_in_delta 4,     @simple.l_compare('wxyz'), D
     assert_raises(TypeError) { @simple.l_match(:foo) }
   end
-=end
 
   def assert_in_delta_array(left, right, delta = D)
     left.size.times do |i|
