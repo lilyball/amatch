@@ -227,7 +227,11 @@ static VALUE amatch_hamming(Amatch *amatch, VALUE string)
     return INT2FIX(result);
 }
 
-static VALUE amatch_lcs_subsequence(Amatch *amatch, VALUE string)
+/*
+ * Longest Common Subsequence computation
+ */
+
+static VALUE amatch_lc_subsequence(Amatch *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
     int result, c, p, i, j, a_len, b_len, *l[2];
@@ -269,7 +273,11 @@ static VALUE amatch_lcs_subsequence(Amatch *amatch, VALUE string)
     return INT2FIX(result);
 }
 
-static VALUE amatch_lcs_substring(Amatch *amatch, VALUE string)
+/*
+ * Longest Common Substring computation
+ */
+
+static VALUE amatch_lc_substring(Amatch *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
     int result, c, p, i, j, a_len, b_len, *l[2];
@@ -470,12 +478,12 @@ static VALUE rb_amatch_hamming(VALUE self, VALUE strings)
 
 static VALUE rb_amatch_lc_subsequence(VALUE self, VALUE strings)
 {                                                                            
-    return iterate_strings(self, strings, amatch_lcs_subsequence);
+    return iterate_strings(self, strings, amatch_lc_subsequence);
 }
 
 static VALUE rb_amatch_lc_substring(VALUE self, VALUE strings)
 {                                                                            
-    return iterate_strings(self, strings, amatch_lcs_substring);
+    return iterate_strings(self, strings, amatch_lc_substring);
 }
 
 void Init_amatch()
