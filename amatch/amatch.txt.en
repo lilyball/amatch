@@ -8,23 +8,24 @@ SYNOPSIS
 
     m = Amatch.new("pattern")
 
-    m.l_match("pattren")                # => 2.0
-    m.l_match(["pattren","parent"])     # => [2.0, 4.0]
-    m.l_search("abcpattrendef")         # => 2.0
-    m.hamming("pattren")                # => 2
-    m.pair_distance("pattr en")         # => 0.545454545454545
-    m.pair_distance("pattr en", nil)    # => 0.461538461538462
-    m.pair_distance("pattr en", /t+/)   # => 0.285714285714286
-    m.lc_subsequence("pattren")         # => 6
-    m.lc_substring("pattren")           # => 4
+    m.levenshtein_match("pattren")                # => 2.0
+    m.levenshtein_match(["pattren","parent"])     # => [2.0, 4.0]
+    m.levenshtein_search("abcpattrendef")         # => 2.0
+    m.hamming("pattren")                          # => 2
+    m.pair_distance("pattr en")                   # => 0.545454545454545
+    m.pair_distance("pattr en", nil)              # => 0.461538461538462
+    m.pair_distance("pattr en", /t+/)             # => 0.285714285714286
+    m.longest_subsequence("pattren")              # => 6
+    m.longest_substring("pattren")                # => 4
 
 
 DESCRIPTION
 
-This class enables your programs to do approximate matching, searching and
-comparing of strings. It uses several algorithms that compute the Levenshtein
-edit distance, the Hamming distance, the longest common subsequence length, the
-longest common substring length, and the pair distance metric.
+This class enables your programs to do approximate matching, searching
+and comparing of strings. It uses several algorithms that compute the
+Levenshtein edit distance, the Hamming distance, the longest common
+subsequence length, the longest common substring length, and the pair
+distance metric.
 
 CONSTRUCTOR
 
@@ -72,13 +73,13 @@ can be of type String or Array of Strings. The method executes the
 matching operation and returns a number if a string was given. If an
 array of strings was given, it returns an array of numbers.
 
-- Amatch#l_match(strings)
+- Amatch#levenshtein_match(strings)
 
   calculates the Levenshtein edit distance(s) between 'pattern' and
   'strings' = the edit distance in weighted char operations and returns
   it as a Float value. See also Amatch#pattern.
 
-- Amatch#l_search(strings)
+- Amatch#levenshtein_search(strings)
 
   searches 'pattern' in strings and returns the edit distance as a Float
   value, by greedy trimming prefixes or postfixes of the match.
@@ -111,7 +112,7 @@ is 6.
 
 Related Methods
 
-- Amatch#lc_subsequence(strings)
+- Amatch#longest_subsequence(strings)
 
   calculates the length of the longest subsequence common to 'pattern'
   and 'strings' and returns it as a Fixnum (or an Array of Fixnums, if
@@ -129,7 +130,7 @@ thus the longest common substring length is 4.
 
 Related Methods
 
-- Amatch#lc_substring(strings)
+- Amatch#longest_substring(strings)
 
   calculates the length of the longest substring common to 'pattern'
   and 'strings' and returns it as a Fixnum (or an Array of Fixnums, if
