@@ -74,7 +74,7 @@ static Amatch *Amatch_allocate()
     return amatch;
 }
 
-static void amatch_resetw(amatch)
+static void amatch_reset_weights(amatch)
     Amatch *amatch;
 {
     amatch->substitution = 1;
@@ -86,7 +86,7 @@ static void amatch_resetw(amatch)
  * Levenshtein edit distances are computed here:
  */
 
-enum { L_MATCH = 1, L_MATCHR, SEARCH, SEARCHR, COMPARE, COMPARER };
+enum { L_MATCH = 1, L_SEARCH, L_COMPARE };
 
 static VALUE amatch_compute_levenshtein_distance(
         Amatch *amatch, VALUE string, char mode)
@@ -106,13 +106,10 @@ static VALUE amatch_compute_levenshtein_distance(
     v[0] = Vector_new(string_len);
     switch (mode) {
         case L_MATCH:
-        case L_MATCHR:
-        case COMPARE:
-        case COMPARER:
+        case L_COMPARE:
             for (i = 0; i <= v[0]->len; i++) v[0]->ptr[i] = i * amatch->insertion;
             break;
-        case SEARCH:
-        case SEARCHR:
+        case L_SEARCH:
             for (i = 0; i <= v[0]->len; i++) v[0]->ptr[i] = 0;
             break;
         default:
@@ -144,31 +141,15 @@ static VALUE amatch_compute_levenshtein_distance(
         case L_MATCH:
             result = rb_float_new(vector_last(v[c]));
             break;
-        case L_MATCHR:
-            result = rb_float_new(
-                (double) vector_last(v[c]) / amatch->pattern_len
-            );
-            break;
-        case SEARCH:
+        case L_SEARCH:
             tmp = vector_minimum(v[c]);
             result = tmp < 0 ?
                 rb_float_new((double) amatch->pattern_len) : rb_float_new(tmp);
             break;
-        case SEARCHR:
-            tmp = vector_minimum(v[c]);
-            result = rb_float_new(
-                tmp < 0 ? 1.0 : (double) tmp / amatch->pattern_len
-            );
-            break;
-        case COMPARE:
+        case L_COMPARE:
             result = rb_float_new(
                 (double) (string_len < amatch->pattern_len ? -1 : 1) *
                 vector_last(v[c]));
-            break;
-        case COMPARER:
-            result = rb_float_new((double)
-                (string_len < amatch->pattern_len ? -1 : 1)     *
-                vector_last(v[c]) / amatch->pattern_len);
             break;
         default:
             rb_raise(rb_eFatal,
@@ -451,10 +432,10 @@ DEF_AMATCH_WRITER(substitution, float, CAST2FLOAT, FLOAT2C, >= 0)
 DEF_AMATCH_WRITER(deletion, float, CAST2FLOAT, FLOAT2C, >= 0)
 DEF_AMATCH_WRITER(insertion, float, CAST2FLOAT, FLOAT2C, >= 0)
 
-static VALUE rb_amatch_resetw(VALUE self)
+static VALUE rb_amatch_reset_weights(VALUE self)
 {
     GET_AMATCH;
-    amatch_resetw(amatch);
+    amatch_reset_weights(amatch);
     return Qtrue;
 }
 
@@ -462,16 +443,13 @@ static VALUE rb_amatch_initialize(VALUE self, VALUE pattern)
 {
     GET_AMATCH;
     amatch_pattern_set(amatch, pattern);
-    amatch_resetw(amatch);
+    amatch_reset_weights(amatch);
     return self;
 }
 
-DEF_LEVENSHTEIN(match, L_MATCH)
-DEF_LEVENSHTEIN(matchr, L_MATCHR)
-DEF_LEVENSHTEIN(compare, COMPARE)
-DEF_LEVENSHTEIN(comparer, COMPARER)
-DEF_LEVENSHTEIN(search, SEARCH)
-DEF_LEVENSHTEIN(searchr, SEARCHR)
+DEF_LEVENSHTEIN(l_match, L_MATCH)
+DEF_LEVENSHTEIN(l_compare, L_COMPARE)
+DEF_LEVENSHTEIN(l_search, L_SEARCH)
 
 static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
 {                                                                            
@@ -511,11 +489,6 @@ static VALUE rb_amatch_hamming(VALUE self, VALUE strings)
     return iterate_strings(self, strings, amatch_hamming);
 }
 
-static VALUE rb_amatch_hammingr(VALUE self, VALUE strings)
-{                                                                            
-    return iterate_strings(self, strings, amatch_hammingr);
-}
-
 static VALUE rb_amatch_lc_subsequence(VALUE self, VALUE strings)
 {                                                                            
     return iterate_strings(self, strings, amatch_lcs_subsequence);
@@ -536,16 +509,12 @@ void Init_amatch()
     AMATCH_ACCESSOR(deletion);
     AMATCH_ACCESSOR(insertion);
     AMATCH_ACCESSOR(pattern);
-    rb_define_method(rb_cAmatch, "reset_weights", rb_amatch_resetw, 0);
+    rb_define_method(rb_cAmatch, "reset_weights", rb_amatch_reset_weights, 0);
 
-    rb_define_method(rb_cAmatch, "match", rb_amatch_match, 1);
-    rb_define_method(rb_cAmatch, "matchr", rb_amatch_matchr, 1);
-    rb_define_method(rb_cAmatch, "compare", rb_amatch_compare, 1);
-    rb_define_method(rb_cAmatch, "comparer", rb_amatch_comparer, 1);
-    rb_define_method(rb_cAmatch, "search", rb_amatch_search, 1);
-    rb_define_method(rb_cAmatch, "searchr", rb_amatch_searchr, 1);
+    rb_define_method(rb_cAmatch, "l_match", rb_amatch_l_match, 1);
+    rb_define_method(rb_cAmatch, "l_compare", rb_amatch_l_compare, 1);
+    rb_define_method(rb_cAmatch, "l_search", rb_amatch_l_search, 1);
     rb_define_method(rb_cAmatch, "hamming", rb_amatch_hamming, 1);
-    rb_define_method(rb_cAmatch, "hammingr", rb_amatch_hammingr, 1);
     rb_define_method(rb_cAmatch, "pair_distance", rb_amatch_pair_distance, -1);
     rb_define_method(rb_cAmatch, "lc_subsequence", rb_amatch_lc_subsequence, 1);
     rb_define_method(rb_cAmatch, "lc_substring", rb_amatch_lc_substring, 1);
