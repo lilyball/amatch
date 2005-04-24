@@ -185,7 +185,6 @@ static VALUE amatch_pair_distance(
     
     Check_Type(string, T_STRING);
     if (!NIL_P(regexp) || use_regexp) {
-        puts("split");
         tokens = rb_funcall(
             rb_str_new(amatch->pattern, amatch->pattern_len),
             id_split, 1, regexp
@@ -198,7 +197,6 @@ static VALUE amatch_pair_distance(
         tokens = rb_funcall(string, id_split, 1, regexp);
         pair_array = PairArray_new(tokens);
     } else {
-        puts("no split");
         VALUE tmp = rb_str_new(amatch->pattern, amatch->pattern_len);
         tokens = rb_ary_new4(1, &tmp);
         if (!amatch->pattern_pair_array) {
