@@ -81,14 +81,17 @@ class TC_Levenshtein < Test::Unit::TestCase
     @simple.substitution = 0.5
     assert_in_delta 0.5, @simple.substitution, D
     assert_in_delta 0.5, @simple.l_match('tast'), D
+    assert_in_delta 0.5, @simple.l_search('aaatastbbb'), D
     @simple.substitution = 1
     assert_in_delta 1, @simple.l_match('tast'), D
     @simple.insertion = 0.5 
     assert_in_delta 0.5, @simple.insertion, D
     assert_in_delta 0.5, @simple.l_match('teist'), D
+    assert_in_delta 0.5, @simple.l_search('aaateistbbb'), D
     @simple.deletion = 0.5
     assert_in_delta 0.5, @simple.deletion, D
     assert_in_delta 0.5, @simple.l_match('tst'), D
+    assert_in_delta 0.5, @simple.l_search('aaatetbbb'), D
   end
 
 
