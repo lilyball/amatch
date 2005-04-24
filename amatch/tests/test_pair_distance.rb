@@ -70,6 +70,7 @@ class TC_PairDistance < Test::Unit::TestCase
     assert_in_delta 1,          @csv.pair_distance('bar,baz,foo', /,/), D
     assert_in_delta 1,          @csv.pair_distance('foo,bar,baz', nil), D
     assert_in_delta 0.9,        @csv.pair_distance('foo,baz,bar', nil), D
+    assert_in_delta 0.9,        @csv.pair_distance('foo,baz,bar'), D
   end
 end
   # vim: set et sw=2 ts=2:
