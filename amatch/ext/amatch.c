@@ -1,5 +1,4 @@
 #include "ruby.h"
-#include "vector.h"
 #include "pair.h"
 
 static VALUE rb_cAmatch;
@@ -416,7 +415,7 @@ static VALUE rb_amatch_reset_weights(VALUE self)
 {
     GET_AMATCH;
     amatch_reset_weights(amatch);
-    return Qtrue;
+    return self;
 }
 
 static VALUE rb_amatch_initialize(VALUE self, VALUE pattern)
