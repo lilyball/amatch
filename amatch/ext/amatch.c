@@ -399,14 +399,33 @@ static VALUE rb_amatch_initialize(VALUE self, VALUE pattern)
     return self;
 }
 
+static VALUE rb_amatch_new(VALUE klass, VALUE pattern)
+{
+    VALUE obj = rb_amatch_s_allocate(klass);
+    rb_amatch_initialize(obj, pattern);
+    return obj;
+}
+
 static VALUE rb_amatch_l_match(VALUE self, VALUE strings)
 {                                                                            
     return iterate_strings(self, strings, amatch_levenshtein_match);
 }
 
+static VALUE rb_str_l_match(VALUE self, VALUE strings)
+{
+    VALUE amatch = rb_amatch_new(rb_cAmatch, self);
+    return rb_amatch_l_match(amatch, strings);
+}
+
 static VALUE rb_amatch_l_search(VALUE self, VALUE strings)
 {                                                                            
     return iterate_strings(self, strings, amatch_levenshtein_search);
+}
+
+static VALUE rb_str_l_search(VALUE self, VALUE strings)
+{
+    VALUE amatch = rb_amatch_new(rb_cAmatch, self);
+    return rb_amatch_l_search(amatch, strings);
 }
 
 static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
@@ -440,9 +459,21 @@ static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
     return result;
 }
 
+static VALUE rb_str_pair_distance(VALUE self, VALUE strings)
+{
+    VALUE amatch = rb_amatch_new(rb_cAmatch, self);
+    return rb_amatch_pair_distance(1, &strings, amatch);
+}
+
 static VALUE rb_amatch_hamming(VALUE self, VALUE strings)
 {                                                                            
     return iterate_strings(self, strings, amatch_hamming);
+}
+
+static VALUE rb_str_hamming(VALUE self, VALUE strings)
+{
+    VALUE amatch = rb_amatch_new(rb_cAmatch, self);
+    return rb_amatch_hamming(amatch, strings);
 }
 
 static VALUE rb_amatch_lc_subsequence(VALUE self, VALUE strings)
@@ -450,9 +481,21 @@ static VALUE rb_amatch_lc_subsequence(VALUE self, VALUE strings)
     return iterate_strings(self, strings, amatch_lc_subsequence);
 }
 
+static VALUE rb_str_lc_subsequence(VALUE self, VALUE strings)
+{                                                                            
+    VALUE amatch = rb_amatch_new(rb_cAmatch, self);
+    return rb_amatch_lc_subsequence(amatch, strings);
+}
+
 static VALUE rb_amatch_lc_substring(VALUE self, VALUE strings)
 {                                                                            
     return iterate_strings(self, strings, amatch_lc_substring);
+}
+
+static VALUE rb_str_lc_substring(VALUE self, VALUE strings)
+{                                                                            
+    VALUE amatch = rb_amatch_new(rb_cAmatch, self);
+    return rb_amatch_lc_substring(amatch, strings);
 }
 
 void Init_amatch()
@@ -468,11 +511,17 @@ void Init_amatch()
     rb_define_method(rb_cAmatch, "reset_weights", rb_amatch_reset_weights, 0);
 
     rb_define_method(rb_cAmatch, "l_match", rb_amatch_l_match, 1);
+    rb_define_method(rb_cString, "l_match", rb_str_l_match, 1);
     rb_define_method(rb_cAmatch, "l_search", rb_amatch_l_search, 1);
+    rb_define_method(rb_cString, "l_search", rb_str_l_search, 1);
     rb_define_method(rb_cAmatch, "hamming", rb_amatch_hamming, 1);
+    rb_define_method(rb_cString, "hamming", rb_str_hamming, 1);
     rb_define_method(rb_cAmatch, "pair_distance", rb_amatch_pair_distance, -1);
+    rb_define_method(rb_cString, "pair_distance", rb_str_pair_distance, 1);
     rb_define_method(rb_cAmatch, "lc_subsequence", rb_amatch_lc_subsequence, 1);
+    rb_define_method(rb_cString, "lc_subsequence", rb_str_lc_subsequence, 1);
     rb_define_method(rb_cAmatch, "lc_substring", rb_amatch_lc_substring, 1);
+    rb_define_method(rb_cString, "lc_substring", rb_str_lc_substring, 1);
     id_split = rb_intern("split");
     id_to_f = rb_intern("to_f");
 }
