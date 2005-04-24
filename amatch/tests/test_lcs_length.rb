@@ -10,27 +10,27 @@ class TC_LCSLength < Test::Unit::TestCase
   end
 
   def test_empty
-    assert_in_delta 0, @empty.lcs_length(''), D
-    assert_in_delta 0, @empty.lcs_length('a'), D
-    assert_in_delta 0, @small.lcs_length(''), D
-    assert_in_delta 0, @empty.lcs_length('not empty'), D
+    assert_in_delta 0, @empty.lc_subsequence(''), D
+    assert_in_delta 0, @empty.lc_subsequence('a'), D
+    assert_in_delta 0, @small.lc_subsequence(''), D
+    assert_in_delta 0, @empty.lc_subsequence('not empty'), D
   end
 
   def test_small
-    assert_in_delta 4, @small.lcs_length('test'), D
-    assert_in_delta 4, @small.lcs_length('testa'), D
-    assert_in_delta 4, @small.lcs_length('atest'), D
-    assert_in_delta 4, @small.lcs_length('teast'), D
-    assert_in_delta 3, @small.lcs_length('est'), D
-    assert_in_delta 3, @small.lcs_length('tes'), D
-    assert_in_delta 3, @small.lcs_length('tst'), D
-    assert_in_delta 3, @small.lcs_length('best'), D
-    assert_in_delta 3, @small.lcs_length('tost'), D
-    assert_in_delta 3, @small.lcs_length('tesa'), D
-    assert_in_delta 2, @small.lcs_length('taex'), D
-    assert_in_delta 1, @small.lcs_length('aaatbbb'), D
-    assert_in_delta 1, @small.lcs_length('aaasbbb'), D
-    assert_in_delta 4, @small.lcs_length('aaatestbbb'), D
+    assert_in_delta 4, @small.lc_subsequence('test'), D
+    assert_in_delta 4, @small.lc_subsequence('testa'), D
+    assert_in_delta 4, @small.lc_subsequence('atest'), D
+    assert_in_delta 4, @small.lc_subsequence('teast'), D
+    assert_in_delta 3, @small.lc_subsequence('est'), D
+    assert_in_delta 3, @small.lc_subsequence('tes'), D
+    assert_in_delta 3, @small.lc_subsequence('tst'), D
+    assert_in_delta 3, @small.lc_subsequence('best'), D
+    assert_in_delta 3, @small.lc_subsequence('tost'), D
+    assert_in_delta 3, @small.lc_subsequence('tesa'), D
+    assert_in_delta 2, @small.lc_subsequence('taex'), D
+    assert_in_delta 1, @small.lc_subsequence('aaatbbb'), D
+    assert_in_delta 1, @small.lc_subsequence('aaasbbb'), D
+    assert_in_delta 4, @small.lc_subsequence('aaatestbbb'), D
   end
 end
   # vim: set et sw=2 ts=2:

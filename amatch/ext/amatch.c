@@ -264,7 +264,7 @@ static VALUE amatch_hammingr(Amatch *amatch, VALUE string)
     return rb_float_new((double) result / amatch->pattern_len);
 }
 
-static VALUE amatch_lcs_length(Amatch *amatch, VALUE string)
+static VALUE amatch_lcs_subsequence(Amatch *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
     int result, c, p, i, j, a_len, b_len, *l[2];
@@ -469,9 +469,9 @@ static VALUE rb_amatch_hammingr(VALUE self, VALUE strings)
     return iterate_strings(self, strings, amatch_hammingr);
 }
 
-static VALUE rb_amatch_lcs_length(VALUE self, VALUE strings)
+static VALUE rb_amatch_lc_subsequence(VALUE self, VALUE strings)
 {                                                                            
-    return iterate_strings(self, strings, amatch_lcs_length);
+    return iterate_strings(self, strings, amatch_lcs_subsequence);
 }
 
 
@@ -497,7 +497,7 @@ void Init_amatch()
     rb_define_method(rb_cAmatch, "hamming", rb_amatch_hamming, 1);
     rb_define_method(rb_cAmatch, "hammingr", rb_amatch_hammingr, 1);
     rb_define_method(rb_cAmatch, "pair_distance", rb_amatch_pair_distance, -1);
-    rb_define_method(rb_cAmatch, "lcs_length", rb_amatch_lcs_length, 1);
+    rb_define_method(rb_cAmatch, "lc_subsequence", rb_amatch_lc_subsequence, 1);
     id_split = rb_intern("split");
     id_to_f = rb_intern("to_f");
 }
