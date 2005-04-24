@@ -306,6 +306,49 @@ static VALUE amatch_lcs_subsequence(Amatch *amatch, VALUE string)
     return INT2FIX(result);
 }
 
+static VALUE amatch_lcs_substring(Amatch *amatch, VALUE string)
+{
+    char *a_ptr, *b_ptr;
+    int result, c, p, i, j, a_len, b_len, *l[2];
+    
+    Check_Type(string, T_STRING);
+    if (amatch->pattern_len < RSTRING(string)->len) {
+        a_ptr = amatch->pattern;
+        a_len = amatch->pattern_len;
+        b_ptr = RSTRING(string)->ptr;
+        b_len = RSTRING(string)->len;
+    } else {
+        a_ptr = RSTRING(string)->ptr;
+        a_len = RSTRING(string)->len;
+        b_ptr = amatch->pattern;
+        b_len = amatch->pattern_len;
+    }
+
+    if (a_len == 0 || b_len == 0) return INT2FIX(0);
+
+    l[0] = ALLOC_N(int, b_len); 
+    MEMZERO(l[0], int, b_len);
+    l[1] = ALLOC_N(int, b_len);
+    MEMZERO(l[1], int, b_len);
+    result = 0;
+    for (i = 0, c = 0, p = 1; i < a_len; i++) {
+        for (j = 0; j < b_len; j++) {
+            if (a_ptr[i] == b_ptr[j]) {
+                l[c][j] = j == 0 ? 1 : 1 + l[p][j - 1];
+                if (l[c][j] > result) result = l[c][j];
+            } else {
+                l[c][j] = 0;
+            }
+        }
+        p = c;
+        c = (c + 1) % 2;
+    }
+    free(l[0]);
+    free(l[1]);
+    return INT2FIX(result);
+}
+
+
 /*
  * A few helper functions go here:
  */
@@ -474,6 +517,10 @@ static VALUE rb_amatch_lc_subsequence(VALUE self, VALUE strings)
     return iterate_strings(self, strings, amatch_lcs_subsequence);
 }
 
+static VALUE rb_amatch_lc_substring(VALUE self, VALUE strings)
+{                                                                            
+    return iterate_strings(self, strings, amatch_lcs_substring);
+}
 
 void Init_amatch()
 {
@@ -498,6 +545,7 @@ void Init_amatch()
     rb_define_method(rb_cAmatch, "hammingr", rb_amatch_hammingr, 1);
     rb_define_method(rb_cAmatch, "pair_distance", rb_amatch_pair_distance, -1);
     rb_define_method(rb_cAmatch, "lc_subsequence", rb_amatch_lc_subsequence, 1);
+    rb_define_method(rb_cAmatch, "lc_substring", rb_amatch_lc_substring, 1);
     id_split = rb_intern("split");
     id_to_f = rb_intern("to_f");
 }
