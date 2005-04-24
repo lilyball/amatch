@@ -46,13 +46,6 @@ rb_amatch_ ## name ## _set(self, value)                             \
             Check_Type(obj, T_FLOAT)
 #define FLOAT2C(obj) RFLOAT(obj)->value
 
-#define DEF_LEVENSHTEIN(name, mode)                             \
-static VALUE                                                    \
-rb_amatch_ ## name(VALUE self, VALUE strings)                   \
-{                                                               \
-    return levenshtein_iterate_strings(self, strings, mode);    \
-}
-
 #define OPTIMIZE_TIME                                   \
     if (amatch->pattern_len < RSTRING(string)->len) {   \
         a_ptr = amatch->pattern;                        \
@@ -65,6 +58,12 @@ rb_amatch_ ## name(VALUE self, VALUE strings)                   \
         b_ptr = amatch->pattern;                        \
         b_len = amatch->pattern_len;                    \
     }
+
+#define DONT_OPTIMIZE                                   \
+        a_ptr = amatch->pattern;                        \
+        a_len = amatch->pattern_len;                    \
+        b_ptr = RSTRING(string)->ptr;                   \
+        b_len = RSTRING(string)->len;                   \
 
 /*
  * The core object of the Amatch class
@@ -98,90 +97,118 @@ static void amatch_reset_weights(amatch)
  * Levenshtein edit distances are computed here:
  */
 
-enum { L_MATCH = 1, L_SEARCH, L_COMPARE };
+#define COMPUTE_LEVENSHTEIN_DISTANCES                                       \
+    for (i = 1, c = 0, p = 1; i <= a_len; i++) {                            \
+        c = i % 2;                      /* current row */                   \
+        p = (i + 1) % 2;                /* previous row */                  \
+        v[c][0] = i * amatch->deletion; /* first column */                  \
+        for (j = 1; j <= b_len; j++) {                                      \
+            /* Bellman's principle of optimality: */                        \
+            weight = v[p][j - 1] +                                          \
+                (a_ptr[i - 1] == b_ptr[j - 1] ? 0 : amatch->substitution);  \
+             if (weight > v[p][j] + amatch->deletion) {                     \
+                 weight = v[p][j] + amatch->deletion;                       \
+             }                                                              \
+            if (weight > v[c][j - 1] + amatch->insertion) {                 \
+                weight = v[c][j - 1] + amatch->insertion;                   \
+            }                                                               \
+            v[c][j] = weight;                                               \
+        }                                                                   \
+        p = c;                                                              \
+        c = (c + 1) % 2;                                                    \
+    }
 
-static VALUE amatch_compute_levenshtein_distance(
-        Amatch *amatch, VALUE string, char mode)
+static VALUE amatch_levenshtein_match(Amatch *amatch, VALUE string)
+{
+    VALUE result;
+    char *a_ptr, *b_ptr;
+    int a_len, b_len;
+    double *v[2] = { NULL, NULL }, weight;
+    int  i, j, c, p;
+
+    Check_Type(string, T_STRING);
+    OPTIMIZE_TIME
+
+    v[0] = ALLOC_N(double, b_len + 1);
+    for (i = 0; i <= b_len; i++)
+        v[0][i] = i * amatch->insertion;
+    v[1] = ALLOC_N(double, b_len + 1);
+    for (i = 0; i <= b_len; i++)
+        v[1][i] = i * amatch->insertion;
+
+    COMPUTE_LEVENSHTEIN_DISTANCES
+
+    result = rb_float_new(v[p][b_len]);
+    free(v[0]);
+    free(v[1]);
+    return result;
+}
+
+static VALUE amatch_levenshtein_search(Amatch *amatch, VALUE string)
 {
     VALUE result;
     char *a_ptr, *b_ptr;
     int a_len, b_len;
     double *v[2] = { NULL, NULL }, weight, min;
+    int  i, j, c, p;
+
+    Check_Type(string, T_STRING);
+    DONT_OPTIMIZE
+
+    v[0] = ALLOC_N(double, b_len + 1);
+    MEMZERO(v[0], double, b_len + 1);
+    v[1] = ALLOC_N(double, b_len + 1);
+    MEMZERO(v[1], double, b_len + 1);
+
+    COMPUTE_LEVENSHTEIN_DISTANCES
+
+    for (i = 0, min = a_len; i <= b_len; i++) {
+        if (v[p][i] < min) min = v[p][i];
+    }
+    result = rb_float_new(min);
+    free(v[0]);
+    free(v[1]);
+    
+    return result;
+}
+
+static VALUE amatch_levenshtein_compare(Amatch *amatch, VALUE string)
+{
+    VALUE result;
+    char *a_ptr, *b_ptr;
+    int a_len, b_len;
+    double *v[2] = { NULL, NULL }, weight;
     int  i, j, c, p, sign;
 
     Check_Type(string, T_STRING);
     OPTIMIZE_TIME
 
     v[0] = ALLOC_N(double, b_len + 1);
+    for (i = 0; i <= b_len; i++)
+        v[0][i] = i * amatch->insertion;
     v[1] = ALLOC_N(double, b_len + 1);
-    switch (mode) {
-        case L_MATCH:
-        case L_COMPARE:
-            for (i = 0; i <= b_len; i++)
-                v[0][i] = i * amatch->insertion;
-            for (i = 0; i <= b_len; i++)
-                v[1][i] = i * amatch->insertion;
-            break;
-        case L_SEARCH:
-            MEMZERO(v[0], double, b_len + 1);
-            MEMZERO(v[1], double, b_len + 1);
-            break;
-        default:
-            rb_raise(rb_eFatal,
-                "unknown mode in amatch_compute_levenshtein_distance");
-    }
+    for (i = 0; i <= b_len; i++)
+        v[1][i] = i * amatch->insertion;
 
-    for (i = 1, c = 0, p = 1; i <= a_len; i++) {
-        c = i % 2;                      /* current row */
-        p = (i + 1) % 2;                /* previous row */
-        v[c][0] = i * amatch->deletion; /* first column */
-        for (j = 1; j <= b_len; j++) {
-            /* Bellman's principle of optimality: */
-            weight = v[p][j - 1] +
-                (a_ptr[i - 1] == b_ptr[j - 1] ? 0 : amatch->substitution);
-             if (weight > v[p][j] + 1) {
-                 weight = v[p][j] + amatch->deletion;
-             }
-            if (weight > v[c][j - 1] + 1) {
-                weight = v[c][j - 1] + amatch->insertion;
-            }
-            v[c][j] = weight;
-        }
-        p = c;
-        c = (c + 1) % 2;
+    COMPUTE_LEVENSHTEIN_DISTANCES
+    
+    sign = 1;
+    if (b_ptr == RSTRING(string)->ptr) {
+        sign = b_len < a_len ? -1 : 1;
+    } else {
+        sign = a_len < b_len ? -1 : 1;
     }
-    switch (mode) {
-        case L_MATCH:
-            result = rb_float_new(v[p][b_len]);
-            break;
-        case L_SEARCH:
-            for (i = 0, min = a_len; i <= b_len; i++) {
-                if (v[p][i] < min) min = v[p][i];
-            }
-            result = rb_float_new(min);
-            break;
-        case L_COMPARE:
-            sign = 1;
-            if (b_ptr == RSTRING(string)->ptr) {
-                sign = b_len < a_len ? -1 : 1;
-            } else {
-                sign = a_len < b_len ? -1 : 1;
-            }
-            result = rb_float_new(sign * v[p][b_len]);
-            break;
-        default:
-            rb_raise(rb_eFatal,
-                "unknown mode in amatch_compute_levenshtein_distance");
-    }
+    result = rb_float_new(sign * v[p][b_len]);
     free(v[0]);
     free(v[1]);
+
     return result;
 }
 /*
  * Pair distances are computed here:
  */
 
-static VALUE amatch_compute_pair_distance(
+static VALUE amatch_pair_distance(
         Amatch *amatch, VALUE string, VALUE regexp, int use_regexp)
 {
     double result;
@@ -341,30 +368,6 @@ static VALUE iterate_strings(VALUE self, VALUE strings,
     }
 }
 
-static VALUE levenshtein_iterate_strings(VALUE self, VALUE strings, char mode)
-{
-    GET_AMATCH;
-    if (TYPE(strings) == T_STRING) {
-        return amatch_compute_levenshtein_distance(amatch, strings, mode);
-    } else {
-        Check_Type(strings, T_ARRAY);
-        int i;
-        VALUE result = rb_ary_new2(RARRAY(strings)->len);
-        for (i = 0; i < RARRAY(strings)->len; i++) {
-            VALUE string = rb_ary_entry(strings, i);
-            if (TYPE(string) != T_STRING) {
-                rb_raise(rb_eTypeError,
-                    "array has to contain only strings (%s given)",
-                    NIL_P(string) ?
-                        "NilClass" : rb_class2name(CLASS_OF(string)));
-            }
-            rb_ary_push(result,
-                amatch_compute_levenshtein_distance(amatch, string, mode));
-        }
-        return result;
-    }
-}
-
 /*
  * Ruby API
  */
@@ -428,9 +431,20 @@ static VALUE rb_amatch_initialize(VALUE self, VALUE pattern)
     return self;
 }
 
-DEF_LEVENSHTEIN(l_match, L_MATCH)
-DEF_LEVENSHTEIN(l_compare, L_COMPARE)
-DEF_LEVENSHTEIN(l_search, L_SEARCH)
+static VALUE rb_amatch_l_match(VALUE self, VALUE strings)
+{                                                                            
+    return iterate_strings(self, strings, amatch_levenshtein_match);
+}
+
+static VALUE rb_amatch_l_search(VALUE self, VALUE strings)
+{                                                                            
+    return iterate_strings(self, strings, amatch_levenshtein_search);
+}
+
+static VALUE rb_amatch_l_compare(VALUE self, VALUE strings)
+{                                                                            
+    return iterate_strings(self, strings, amatch_levenshtein_compare);
+}
 
 static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
 {                                                                            
@@ -441,8 +455,7 @@ static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
     rb_scan_args(argc, argv, "11", &strings, &regexp);
     use_regexp = NIL_P(regexp) && argc != 2;
     if (TYPE(strings) == T_STRING) {
-        result = amatch_compute_pair_distance(amatch, strings, regexp,
-            use_regexp);
+        result = amatch_pair_distance(amatch, strings, regexp, use_regexp);
     } else {
         Check_Type(strings, T_ARRAY);
         int i;
@@ -456,8 +469,7 @@ static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
                         "NilClass" : rb_class2name(CLASS_OF(string)));
             }
             rb_ary_push(result,
-                amatch_compute_pair_distance(amatch, string, regexp,
-                    use_regexp));
+                amatch_pair_distance(amatch, string, regexp, use_regexp));
         }
     }
     pair_array_destroy(amatch->pattern_pair_array);
