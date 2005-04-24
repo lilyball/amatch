@@ -225,28 +225,6 @@ static VALUE amatch_hamming(Amatch *amatch, VALUE string)
     return INT2FIX(result);
 }
 
-static VALUE amatch_hammingr(Amatch *amatch, VALUE string)
-{
-    char *string_ptr;
-    int i, string_len;
-    int result = 0;
-    
-    Check_Type(string, T_STRING);
-    string_ptr = RSTRING(string)->ptr;
-    string_len = RSTRING(string)->len;
-    if (string_len > amatch->pattern_len) {
-        result += string_len - amatch->pattern_len;
-    }
-    for (i = 0; i < amatch->pattern_len; i++) {
-        if (i >= string_len) {
-            result +=  amatch->pattern_len - string_len;
-            break;
-        }
-        if (string_ptr[i] != amatch->pattern[i]) result++;
-    }
-    return rb_float_new((double) result / amatch->pattern_len);
-}
-
 static VALUE amatch_lcs_subsequence(Amatch *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
