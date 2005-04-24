@@ -94,8 +94,7 @@ static VALUE amatch_compute_levenshtein_distance(
     VALUE result;
     int string_len;
     char *string_ptr;
-    Vector *v[2];
-    double weight, tmp;
+    double *v[2] = { NULL, NULL }, weight, min;
     int  i, j;
     int c = 0, p = 1;
 
@@ -103,60 +102,64 @@ static VALUE amatch_compute_levenshtein_distance(
     string_ptr = RSTRING(string)->ptr;
     string_len = RSTRING(string)->len;
 
-    v[0] = Vector_new(string_len);
+    v[0] = ALLOC_N(double, string_len + 1);
     switch (mode) {
         case L_MATCH:
         case L_COMPARE:
-            for (i = 0; i <= v[0]->len; i++) v[0]->ptr[i] = i * amatch->insertion;
+            for (i = 0; i <= string_len; i++)
+                v[0][i] = i * amatch->insertion;
             break;
         case L_SEARCH:
-            for (i = 0; i <= v[0]->len; i++) v[0]->ptr[i] = 0;
+            MEMZERO(v[0], double, string_len + 1);
             break;
         default:
             rb_raise(rb_eFatal,
                 "unknown mode in amatch_compute_levenshtein_distance");
     }
 
-    v[1] = Vector_new(string_len);
-    for (i = 1; i <= amatch->pattern_len; i++) {
-        c = i % 2;                /* current row */
-        p = (i + 1) % 2;          /* previous row */
-        v[c]->ptr[0] = i * amatch->deletion;    /* first column */
+    v[1] = ALLOC_N(double, string_len + 1);
+    for (i = 1, c = 0, p = 1; i <= amatch->pattern_len; i++) {
+        c = i % 2;                      /* current row */
+        p = (i + 1) % 2;                /* previous row */
+        v[c][0] = i * amatch->deletion; /* first column */
         for (j = 1; j <= string_len; j++) {
             /* Bellman's principle of optimality: */
-            weight = v[p]->ptr[j - 1] +
+            weight = v[p][j - 1] +
                 (amatch->pattern[i - 1] == string_ptr[j - 1] ?
                     0 :
                     amatch->substitution);
-             if (weight > v[p]->ptr[j] + 1) {
-                 weight = v[p]->ptr[j] + amatch->deletion;
+             if (weight > v[p][j] + 1) {
+                 weight = v[p][j] + amatch->deletion;
              }
-            if (weight > v[c]->ptr[j - 1] + 1) {
-                weight = v[c]->ptr[j - 1] + amatch->insertion;
+            if (weight > v[c][j - 1] + 1) {
+                weight = v[c][j - 1] + amatch->insertion;
             }
-            v[c]->ptr[j] = weight;
+            v[c][j] = weight;
         }
+        p = c;
+        c = (c + 1) % 2;
     }
     switch (mode) {
         case L_MATCH:
-            result = rb_float_new(vector_last(v[c]));
+            result = rb_float_new(v[p][string_len]);
             break;
         case L_SEARCH:
-            tmp = vector_minimum(v[c]);
-            result = tmp < 0 ?
-                rb_float_new((double) amatch->pattern_len) : rb_float_new(tmp);
+            for (i = 0, min = amatch->pattern_len; i <= string_len; i++) {
+                if (v[p][i] < min) min = v[p][i];
+            }
+            result = rb_float_new(min);
             break;
         case L_COMPARE:
             result = rb_float_new(
                 (double) (string_len < amatch->pattern_len ? -1 : 1) *
-                vector_last(v[c]));
+                v[p][string_len]);
             break;
         default:
             rb_raise(rb_eFatal,
                 "unknown mode in amatch_compute_levenshtein_distance");
     }
-    vector_destroy(v[0]);
-    vector_destroy(v[1]);
+    free(v[0]);
+    free(v[1]);
     return result;
 }
 /*
@@ -308,7 +311,6 @@ static VALUE amatch_lcs_substring(Amatch *amatch, VALUE string)
     free(l[1]);
     return INT2FIX(result);
 }
-
 
 /*
  * A few helper functions go here:
