@@ -328,7 +328,8 @@ static VALUE iterate_strings(VALUE self, VALUE strings,
                 rb_raise(rb_eTypeError,
                     "array has to contain only strings (%s given)",
                     NIL_P(string) ?
-                        "NilClass" : rb_class2name(CLASS_OF(string)));
+                        "NilClass" :
+                        rb_class2name(CLASS_OF(string)));
             }
             rb_ary_push(result, match_function(amatch, string));
         }
@@ -448,7 +449,8 @@ static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
                 rb_raise(rb_eTypeError,
                     "array has to contain only strings (%s given)",
                     NIL_P(string) ?
-                        "NilClass" : rb_class2name(CLASS_OF(string)));
+                        "NilClass" :
+                        rb_class2name(CLASS_OF(string)));
             }
             rb_ary_push(result,
                 amatch_pair_distance(amatch, string, regexp, use_regexp));
