@@ -399,7 +399,7 @@ static VALUE rb_amatch_initialize(VALUE self, VALUE pattern)
     return self;
 }
 
-static VALUE rb_amatch_new(VALUE klass, VALUE pattern)
+VALUE rb_amatch_new(VALUE klass, VALUE pattern)
 {
     VALUE obj = rb_amatch_s_allocate(klass);
     rb_amatch_initialize(obj, pattern);
