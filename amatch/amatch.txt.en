@@ -53,7 +53,9 @@ already the same string. It's easy to see that more similar strings have
 smaller edit distances than strings that differ a lot.
 
 You can als use different weights for every operation to prefer special
-operations over others.
+operations over others. This extension of the Levenshtein edit distance
+is also known under the names: Needleman-Wunch distance or Sellers
+algorithm.
 
 Related Methods
 
