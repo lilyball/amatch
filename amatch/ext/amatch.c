@@ -1,6 +1,13 @@
 #include "ruby.h"
 #include "pair.h"
 
+/*
+ * Document-module: Amatch
+ * 
+ * TODO
+ * 
+ */
+
 static VALUE rb_mAmatch, rb_cLevenshtein, rb_cHamming, rb_cPairDistance,
              rb_cLongestSubsequence, rb_cLongestSubstring;
 
@@ -86,10 +93,6 @@ static VALUE type##_iterate_strings(type *amatch, VALUE strings,     \
         return result;                                              \
     }                                                               \
 }
-
-#define RB_ACCESSOR(klass, type, name)                              \
-    rb_define_method(klass, #name, rb_##type##_##name, 0);            \
-    rb_define_method(klass, #name"=", rb_##type##_##name##_set, 1)
 
 #define DEF_RB_READER(type, function, name, converter)              \
 VALUE function(VALUE self)                                          \
@@ -398,7 +401,12 @@ static VALUE amatch_LongestSubstring(General *amatch, VALUE string)
  * Ruby API
  */
 
-/* Levenshtein */
+/* 
+ * Document-class: Levenshtein
+ *
+ * TODO
+ *  
+ */
 
 DEF_RB_FREE(Levenshtein, Levenshtein)
 DEF_RB_READER(Levenshtein, rb_Levenshtein_substitution, substitution,
@@ -456,7 +464,12 @@ static VALUE rb_str_Levenshtein_search(VALUE self, VALUE strings)
     return rb_Levenshtein_search(amatch, strings);
 }
 
-/* Pair Distance */
+/* 
+ * Document-class: PairDistance
+ *
+ * TODO
+ *  
+ */
 
 DEF_RB_FREE(PairDistance, PairDistance)
 
@@ -592,10 +605,10 @@ void Init_amatch()
     rb_cLevenshtein = rb_define_class_under(rb_mAmatch, "Levenshtein", rb_cObject);
     rb_define_alloc_func(rb_cLevenshtein, rb_Levenshtein_s_allocate);
     rb_define_method(rb_cLevenshtein, "initialize", rb_Levenshtein_initialize, 1);
-    RB_ACCESSOR(rb_cLevenshtein, Levenshtein, pattern);
-    RB_ACCESSOR(rb_cLevenshtein, Levenshtein, substitution);
-    RB_ACCESSOR(rb_cLevenshtein, Levenshtein, deletion);
-    RB_ACCESSOR(rb_cLevenshtein, Levenshtein, insertion);
+    rb_define_method(rb_cLevenshtein, "pattern", rb_Levenshtein_pattern, 0); rb_define_method(rb_cLevenshtein, "pattern=", rb_Levenshtein_pattern_set, 1);
+    rb_define_method(rb_cLevenshtein, "substitution", rb_Levenshtein_substitution, 0); rb_define_method(rb_cLevenshtein, "substitution=", rb_Levenshtein_substitution_set, 1);
+    rb_define_method(rb_cLevenshtein, "deletion", rb_Levenshtein_deletion, 0); rb_define_method(rb_cLevenshtein, "deletion=", rb_Levenshtein_deletion_set, 1);
+    rb_define_method(rb_cLevenshtein, "insertion", rb_Levenshtein_insertion, 0); rb_define_method(rb_cLevenshtein, "insertion=", rb_Levenshtein_insertion_set, 1);
     rb_define_method(rb_cLevenshtein, "reset_weights", rb_Levenshtein_reset_weights, 0);
     rb_define_method(rb_cLevenshtein, "match", rb_Levenshtein_match, 1);
     rb_define_method(rb_cString, "levenshtein_match", rb_str_Levenshtein_match, 1);
@@ -606,7 +619,7 @@ void Init_amatch()
     rb_cHamming = rb_define_class_under(rb_mAmatch, "Hamming", rb_cObject);
     rb_define_alloc_func(rb_cHamming, rb_Hamming_s_allocate);
     rb_define_method(rb_cHamming, "initialize", rb_Hamming_initialize, 1);
-    RB_ACCESSOR(rb_cHamming, General, pattern);
+    rb_define_method(rb_cHamming, "pattern", rb_General_pattern, 0); rb_define_method(rb_cHamming, "pattern=", rb_General_pattern_set, 1);
     rb_define_method(rb_cHamming, "match", rb_Hamming_match, 1);
     rb_define_method(rb_cString, "hamming_match", rb_str_hamming, 1);
 
@@ -614,7 +627,8 @@ void Init_amatch()
     rb_cPairDistance = rb_define_class_under(rb_mAmatch, "PairDistance", rb_cObject);
     rb_define_alloc_func(rb_cPairDistance, rb_PairDistance_s_allocate);
     rb_define_method(rb_cPairDistance, "initialize", rb_PairDistance_initialize, 1);
-    RB_ACCESSOR(rb_cPairDistance, PairDistance, pattern);
+    rb_define_method(rb_cPairDistance, "pattern", rb_PairDistance_pattern, 0);
+    rb_define_method(rb_cPairDistance, "pattern=", rb_PairDistance_pattern_set, 1);
     rb_define_method(rb_cPairDistance, "match", rb_PairDistance_match, -1);
     rb_define_method(rb_cString, "pair_distance_match", rb_str_pair_distance, 1);
 
@@ -622,7 +636,7 @@ void Init_amatch()
     rb_cLongestSubsequence = rb_define_class_under(rb_mAmatch, "LongestSubsequence", rb_cObject);
     rb_define_alloc_func(rb_cLongestSubsequence, rb_LongestSubsequence_s_allocate);
     rb_define_method(rb_cLongestSubsequence, "initialize", rb_LongestSubsequence_initialize, 1);
-    RB_ACCESSOR(rb_cLongestSubsequence, General, pattern);
+    rb_define_method(rb_cLongestSubsequence, "pattern", rb_General_pattern, 0); rb_define_method(rb_cLongestSubsequence, "pattern=", rb_General_pattern_set, 1);
     rb_define_method(rb_cLongestSubsequence, "match", rb_longest_subsequence_match, 1);
     rb_define_method(rb_cString, "longest_subsequence_match", rb_str_longest_subsequence, 1);
 
@@ -630,7 +644,7 @@ void Init_amatch()
     rb_cLongestSubstring = rb_define_class_under(rb_mAmatch, "LongestSubstring", rb_cObject);
     rb_define_alloc_func(rb_cLongestSubstring, rb_LongestSubstring_s_allocate);
     rb_define_method(rb_cLongestSubstring, "initialize", rb_LongestSubstring_initialize, 1);
-    RB_ACCESSOR(rb_cLongestSubstring, General, pattern);
+    rb_define_method(rb_cLongestSubstring, "pattern", rb_General_pattern, 0); rb_define_method(rb_cLongestSubstring, "pattern=", rb_General_pattern_set, 1);
     rb_define_method(rb_cLongestSubstring, "match", rb_LongestSubstring_match_match, 1);
     rb_define_method(rb_cString, "longest_substring_match", rb_str_longest_substring, 1);
 
