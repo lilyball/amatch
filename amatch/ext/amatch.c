@@ -264,7 +264,7 @@ static VALUE Levenshtein_search(Levenshtein *amatch, VALUE string)
  * Pair distances are computed here:
  */
 
-static VALUE pair_distance(
+static VALUE PairDistance_match(
         PairDistance *amatch, VALUE string, VALUE regexp, int use_regexp)
 {
     double result;
@@ -363,7 +363,7 @@ static VALUE longest_subsequence(General *amatch, VALUE string)
  * Longest Common Subsequence computation
  */
 
-static VALUE amatch_longest_substring(General *amatch, VALUE string)
+static VALUE amatch_LongestSubstring(General *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
     int a_len, b_len;
@@ -471,7 +471,7 @@ static VALUE rb_PairDistance_initialize(VALUE self, VALUE pattern)
 
 DEF_CONSTRUCTOR(PairDistance, PairDistance)
 
-static VALUE rb_pair_distance(int argc, VALUE *argv, VALUE self)
+static VALUE rb_PairDistance_match(int argc, VALUE *argv, VALUE self)
 {                                                                            
     VALUE result, strings, regexp = Qnil;
     int use_regexp;
@@ -480,7 +480,7 @@ static VALUE rb_pair_distance(int argc, VALUE *argv, VALUE self)
     rb_scan_args(argc, argv, "11", &strings, &regexp);
     use_regexp = NIL_P(regexp) && argc != 2;
     if (TYPE(strings) == T_STRING) {
-        result = pair_distance(amatch, strings, regexp, use_regexp);
+        result = PairDistance_match(amatch, strings, regexp, use_regexp);
     } else {
         Check_Type(strings, T_ARRAY);
         int i;
@@ -495,7 +495,7 @@ static VALUE rb_pair_distance(int argc, VALUE *argv, VALUE self)
                         rb_class2name(CLASS_OF(string)));
             }
             rb_ary_push(result,
-                pair_distance(amatch, string, regexp, use_regexp));
+                PairDistance_match(amatch, string, regexp, use_regexp));
         }
     }
     pair_array_destroy(amatch->pattern_pair_array);
@@ -506,7 +506,7 @@ static VALUE rb_pair_distance(int argc, VALUE *argv, VALUE self)
 static VALUE rb_str_pair_distance(VALUE self, VALUE strings)
 {
     VALUE amatch = rb_PairDistance_new(rb_cLevenshtein, self);
-    return rb_pair_distance(1, &strings, amatch);
+    return rb_PairDistance_match(1, &strings, amatch);
 }
 
 /* Hamming */
@@ -522,7 +522,7 @@ static VALUE rb_Hamming_initialize(VALUE self, VALUE pattern)
 
 DEF_CONSTRUCTOR(Hamming, General)
 
-static VALUE rb_hamming(VALUE self, VALUE strings)
+static VALUE rb_Hamming_match(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(General)
     return General_iterate_strings(amatch, strings, hamming);
@@ -531,7 +531,7 @@ static VALUE rb_hamming(VALUE self, VALUE strings)
 static VALUE rb_str_hamming(VALUE self, VALUE strings)
 {
     VALUE amatch = rb_Hamming_new(rb_cLevenshtein, self);
-    return rb_hamming(amatch, strings);
+    return rb_Hamming_match(amatch, strings);
 }
 
 /* Longest Common Subsequence */
@@ -547,7 +547,7 @@ static VALUE rb_LongestSubsequence_initialize(VALUE self, VALUE pattern)
 
 DEF_CONSTRUCTOR(LongestSubsequence, General)
 
-static VALUE rb_longest_subsequence(VALUE self, VALUE strings)
+static VALUE rb_longest_subsequence_match(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(General)
     return General_iterate_strings(amatch, strings, longest_subsequence);
@@ -556,7 +556,7 @@ static VALUE rb_longest_subsequence(VALUE self, VALUE strings)
 static VALUE rb_str_longest_subsequence(VALUE self, VALUE strings)
 {                                                                            
     VALUE amatch = rb_LongestSubsequence_new(rb_cLevenshtein, self);
-    return rb_longest_subsequence(amatch, strings);
+    return rb_longest_subsequence_match(amatch, strings);
 }
 
 /* Longest Common Substring */
@@ -572,16 +572,16 @@ static VALUE rb_LongestSubstring_initialize(VALUE self, VALUE pattern)
 
 DEF_CONSTRUCTOR(LongestSubstring, General)
 
-static VALUE rb_longest_substring(VALUE self, VALUE strings)
+static VALUE rb_LongestSubstring_match_match(VALUE self, VALUE strings)
 {
     GET_STRUCT(General)
-    return General_iterate_strings(amatch, strings, amatch_longest_substring);
+    return General_iterate_strings(amatch, strings, amatch_LongestSubstring);
 }
 
 static VALUE rb_str_longest_substring(VALUE self, VALUE strings)
 {                                                                            
     VALUE amatch = rb_LongestSubsequence_new(rb_cLevenshtein, self);
-    return rb_longest_substring(amatch, strings);
+    return rb_LongestSubstring_match_match(amatch, strings);
 }
 
 /* Initialisation */
@@ -612,7 +612,7 @@ void Init_amatch()
     rb_define_alloc_func(rb_cHamming, rb_Hamming_s_allocate);
     rb_define_method(rb_cHamming, "initialize", rb_Hamming_initialize, 1);
     RB_ACCESSOR(rb_cHamming, General, pattern);
-    rb_define_method(rb_cHamming, "hamming", rb_hamming, 1);
+    rb_define_method(rb_cHamming, "match", rb_Hamming_match, 1);
     rb_define_method(rb_cString, "hamming", rb_str_hamming, 1);
 
     /* Pair Distance Metric */
@@ -621,7 +621,7 @@ void Init_amatch()
     rb_define_alloc_func(rb_cPairDistance, rb_PairDistance_s_allocate);
     rb_define_method(rb_cPairDistance, "initialize", rb_PairDistance_initialize, 1);
     RB_ACCESSOR(rb_cPairDistance, PairDistance, pattern);
-    rb_define_method(rb_cPairDistance, "pair_distance", rb_pair_distance, -1);
+    rb_define_method(rb_cPairDistance, "match", rb_PairDistance_match, -1);
     rb_define_method(rb_cString, "pair_distance", rb_str_pair_distance, 1);
 
     /* Longest Common Subsequence */
@@ -630,8 +630,8 @@ void Init_amatch()
     rb_define_alloc_func(rb_cLongestSubsequence, rb_LongestSubsequence_s_allocate);
     rb_define_method(rb_cLongestSubsequence, "initialize", rb_LongestSubsequence_initialize, 1);
     RB_ACCESSOR(rb_cLongestSubsequence, General, pattern);
-    rb_define_method(rb_cLongestSubsequence, "longest_subsequence",
-        rb_longest_subsequence, 1);
+    rb_define_method(rb_cLongestSubsequence, "match",
+        rb_longest_subsequence_match, 1);
     rb_define_method(rb_cString, "longest_subsequence",
         rb_str_longest_subsequence, 1);
 
@@ -641,8 +641,8 @@ void Init_amatch()
     rb_define_alloc_func(rb_cLongestSubstring, rb_LongestSubstring_s_allocate);
     rb_define_method(rb_cLongestSubstring, "initialize", rb_LongestSubstring_initialize, 1);
     RB_ACCESSOR(rb_cLongestSubstring, General, pattern);
-    rb_define_method(rb_cLongestSubstring, "longest_substring",
-        rb_longest_substring, 1);
+    rb_define_method(rb_cLongestSubstring, "match",
+        rb_LongestSubstring_match_match, 1);
     rb_define_method(rb_cString, "longest_substring",
         rb_str_longest_substring, 1);
 

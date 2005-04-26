@@ -15,64 +15,64 @@ class TC_PairDistance < Test::Unit::TestCase
   end
 
   def test_empty
-    assert_in_delta 1, @empty.pair_distance(''), D
-    assert_in_delta 0, @empty.pair_distance('not empty'), D
+    assert_in_delta 1, @empty.match(''), D
+    assert_in_delta 0, @empty.match('not empty'), D
   end
 
   def test_countries
-    assert_in_delta 0.5555555,  @france.pair_distance('france'), D
-    assert_in_delta 0.1052631,  @france.pair_distance('germany'), D
-    assert_in_delta 0.4615384,  @germany.pair_distance('germany'), D
-    assert_in_delta 0.16,       @germany.pair_distance('france'), D
+    assert_in_delta 0.5555555,  @france.match('france'), D
+    assert_in_delta 0.1052631,  @france.match('germany'), D
+    assert_in_delta 0.4615384,  @germany.match('germany'), D
+    assert_in_delta 0.16,       @germany.match('france'), D
     assert_in_delta 0.6829268,
-      @germany.pair_distance('german democratic republic'), D
+      @germany.match('german democratic republic'), D
     assert_in_delta 0.72,
-      @france.pair_distance('french republic'), D
+      @france.match('french republic'), D
     assert_in_delta 0.4375,
-      @germany.pair_distance('french republic'), D
+      @germany.match('french republic'), D
     assert_in_delta 0.5294117,
-      @france.pair_distance('german democratic republic'), D
+      @france.match('german democratic republic'), D
   end
 
   def test_single
-    assert_in_delta 0,          @single.pair_distance(''), D
-    assert_in_delta 1,          @single.pair_distance('test'), D
-    assert_in_delta 0.8571428,  @single.pair_distance('testa'), D
-    assert_in_delta 0.8571428,  @single.pair_distance('atest'), D
-    assert_in_delta 0.5714285,  @single.pair_distance('teast'), D
-    assert_in_delta 0.8,        @single.pair_distance('est'), D
-    assert_in_delta 0.8,        @single.pair_distance('tes'), D
-    assert_in_delta 0.4,        @single.pair_distance('tst'), D
-    assert_in_delta 0.6666666,  @single.pair_distance('best'), D
-    assert_in_delta 0.3333333,  @single.pair_distance('tost'), D
-    assert_in_delta 0.6666666,  @single.pair_distance('tesa'), D
-    assert_in_delta 0.0,        @single.pair_distance('taex'), D
-    assert_in_delta 0.5,        @single.pair_distance('aaatestbbb'), D
-    assert_in_delta 0.6,        @single.pair_distance('aaa test bbb'), D
-    assert_in_delta 0.6,        @single.pair_distance('test aaa bbb'), D
-    assert_in_delta 0.6,        @single.pair_distance('bbb aaa test'), D
+    assert_in_delta 0,          @single.match(''), D
+    assert_in_delta 1,          @single.match('test'), D
+    assert_in_delta 0.8571428,  @single.match('testa'), D
+    assert_in_delta 0.8571428,  @single.match('atest'), D
+    assert_in_delta 0.5714285,  @single.match('teast'), D
+    assert_in_delta 0.8,        @single.match('est'), D
+    assert_in_delta 0.8,        @single.match('tes'), D
+    assert_in_delta 0.4,        @single.match('tst'), D
+    assert_in_delta 0.6666666,  @single.match('best'), D
+    assert_in_delta 0.3333333,  @single.match('tost'), D
+    assert_in_delta 0.6666666,  @single.match('tesa'), D
+    assert_in_delta 0.0,        @single.match('taex'), D
+    assert_in_delta 0.5,        @single.match('aaatestbbb'), D
+    assert_in_delta 0.6,        @single.match('aaa test bbb'), D
+    assert_in_delta 0.6,        @single.match('test aaa bbb'), D
+    assert_in_delta 0.6,        @single.match('bbb aaa test'), D
   end
 
   def test_csv
-    assert_in_delta 0,          @csv.pair_distance('', /,/), D
-    assert_in_delta 0.5,        @csv.pair_distance('foo', /,/), D
-    assert_in_delta 0.5,        @csv.pair_distance('bar', /,/), D
-    assert_in_delta 0.5,        @csv.pair_distance('baz', /,/), D
-    assert_in_delta 0.8,        @csv.pair_distance('foo,bar', /,/), D
-    assert_in_delta 0.8,        @csv.pair_distance('bar,foo', /,/), D
-    assert_in_delta 0.8,        @csv.pair_distance('bar,baz', /,/), D
-    assert_in_delta 0.8,        @csv.pair_distance('baz,bar', /,/), D
-    assert_in_delta 0.8,        @csv.pair_distance('foo,baz', /,/), D
-    assert_in_delta 0.8,        @csv.pair_distance('baz,foo', /,/), D
-    assert_in_delta 1,          @csv.pair_distance('foo,bar,baz', /,/), D
-    assert_in_delta 1,          @csv.pair_distance('foo,baz,bar', /,/), D
-    assert_in_delta 1,          @csv.pair_distance('baz,foo,bar', /,/), D
-    assert_in_delta 1,          @csv.pair_distance('baz,bar,foo', /,/), D
-    assert_in_delta 1,          @csv.pair_distance('bar,foo,baz', /,/), D
-    assert_in_delta 1,          @csv.pair_distance('bar,baz,foo', /,/), D
-    assert_in_delta 1,          @csv.pair_distance('foo,bar,baz', nil), D
-    assert_in_delta 0.9,        @csv.pair_distance('foo,baz,bar', nil), D
-    assert_in_delta 0.9,        @csv.pair_distance('foo,baz,bar'), D
+    assert_in_delta 0,          @csv.match('', /,/), D
+    assert_in_delta 0.5,        @csv.match('foo', /,/), D
+    assert_in_delta 0.5,        @csv.match('bar', /,/), D
+    assert_in_delta 0.5,        @csv.match('baz', /,/), D
+    assert_in_delta 0.8,        @csv.match('foo,bar', /,/), D
+    assert_in_delta 0.8,        @csv.match('bar,foo', /,/), D
+    assert_in_delta 0.8,        @csv.match('bar,baz', /,/), D
+    assert_in_delta 0.8,        @csv.match('baz,bar', /,/), D
+    assert_in_delta 0.8,        @csv.match('foo,baz', /,/), D
+    assert_in_delta 0.8,        @csv.match('baz,foo', /,/), D
+    assert_in_delta 1,          @csv.match('foo,bar,baz', /,/), D
+    assert_in_delta 1,          @csv.match('foo,baz,bar', /,/), D
+    assert_in_delta 1,          @csv.match('baz,foo,bar', /,/), D
+    assert_in_delta 1,          @csv.match('baz,bar,foo', /,/), D
+    assert_in_delta 1,          @csv.match('bar,foo,baz', /,/), D
+    assert_in_delta 1,          @csv.match('bar,baz,foo', /,/), D
+    assert_in_delta 1,          @csv.match('foo,bar,baz', nil), D
+    assert_in_delta 0.9,        @csv.match('foo,baz,bar', nil), D
+    assert_in_delta 0.9,        @csv.match('foo,baz,bar'), D
   end
 end
   # vim: set et sw=2 ts=2:
