@@ -6,7 +6,8 @@ $:.unshift File.expand_path(File.dirname($0))
 require 'test_levenshtein'
 require 'test_pair_distance'
 require 'test_hamming'
-require 'test_lcs_length'
+require 'test_longest_subsequence'
+require 'test_longest_substring'
 
 class TS_AllTests
   def self.suite
@@ -14,7 +15,8 @@ class TS_AllTests
     suite << TC_Levenshtein.suite
     suite << TC_PairDistance.suite
     suite << TC_Hamming.suite
-    suite << TC_LCSLength.suite
+    suite << TC_LongestSubsequence.suite
+    suite << TC_LongestSubstring.suite
     suite
   end
 end

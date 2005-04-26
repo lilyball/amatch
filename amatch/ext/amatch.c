@@ -1,43 +1,118 @@
 #include "ruby.h"
 #include "pair.h"
 
-static VALUE rb_cAmatch;
+static VALUE rb_mAmatch, rb_cLevenshtein, rb_cHamming, rb_cPairDistance,
+             rb_cLongestSubsequence, rb_cLongestSubstring;
+
 static ID id_split, id_to_f;
 
 /* Macromania goes here: */
 
-#define GET_AMATCH                          \
-    Amatch *amatch;                         \
-    Data_Get_Struct(self, Amatch, amatch)
+#define GET_STRUCT(klass)                 \
+    klass *amatch;                        \
+    Data_Get_Struct(self, klass, amatch);
 
-#define AMATCH_ACCESSOR(name)                                               \
-    rb_define_method(rb_cAmatch, #name, rb_amatch_ ## name, 0);             \
-    rb_define_method(rb_cAmatch, #name"=", rb_amatch_ ## name ## _set, 1)
+#define DEF_ALLOCATOR(type)                                             \
+static type *type##_allocate()                                          \
+{                                                                       \
+    type *obj = ALLOC(type);                                            \
+    MEMZERO(obj, type, 1);                                              \
+    return obj;                                                         \
+}
 
-#define DEF_AMATCH_READER(name, converter)                          \
-VALUE                                                               \
-rb_amatch_ ## name(self)                                            \
-    VALUE self;                                                     \
+#define DEF_CONSTRUCTOR(klass, type)                                    \
+static VALUE rb_##klass##_s_allocate(VALUE klass2)                      \
+{                                                                       \
+    type *amatch = type##_allocate();                                   \
+    return Data_Wrap_Struct(klass2, NULL, rb_##klass##_free, amatch);   \
+}                                                                       \
+VALUE rb_##klass##_new(VALUE klass2, VALUE pattern)                     \
+{                                                                       \
+    VALUE obj = rb_##klass##_s_allocate(klass2);                        \
+    rb_##klass##_initialize(obj, pattern);                              \
+    return obj;                                                         \
+}
+
+#define DEF_RB_FREE(klass, type)                            \
+static void rb_##klass##_free(type *amatch)                 \
+{                                                           \
+    MEMZERO(amatch->pattern, char, amatch->pattern_len);    \
+    free(amatch->pattern);                                  \
+    MEMZERO(amatch, type, 1);                               \
+    free(amatch);                                           \
+}
+
+#define DEF_PATTERN_ACCESSOR(type)                              \
+static void type##_pattern_set(type *amatch, VALUE pattern)     \
+{                                                               \
+    Check_Type(pattern, T_STRING);                              \
+    free(amatch->pattern);                                      \
+    amatch->pattern_len = RSTRING(pattern)->len;                \
+    amatch->pattern = ALLOC_N(char, amatch->pattern_len);       \
+    MEMCPY(amatch->pattern, RSTRING(pattern)->ptr, char,        \
+        RSTRING(pattern)->len);                                 \
+}                                                               \
+static VALUE rb_##type##_pattern(VALUE self)                    \
+{                                                               \
+    GET_STRUCT(type)                                            \
+    return rb_str_new(amatch->pattern, amatch->pattern_len);    \
+}                                                               \
+static VALUE rb_##type##_pattern_set(VALUE self, VALUE pattern) \
+{                                                               \
+    GET_STRUCT(type)                                            \
+    type##_pattern_set(amatch, pattern);                        \
+    return Qnil;                                                \
+}
+
+#define DEF_ITERATE_STRINGS(type)                                   \
+static VALUE type##_iterate_strings(type *amatch, VALUE strings,     \
+    VALUE (*match_function) (type *amatch, VALUE strings))        \
 {                                                                   \
-    GET_AMATCH;                                                     \
+    if (TYPE(strings) == T_STRING) {                                \
+        return match_function(amatch, strings);                     \
+    } else {                                                        \
+        Check_Type(strings, T_ARRAY);                               \
+        int i;                                                      \
+        VALUE result = rb_ary_new2(RARRAY(strings)->len);           \
+        for (i = 0; i < RARRAY(strings)->len; i++) {                \
+            VALUE string = rb_ary_entry(strings, i);                \
+            if (TYPE(string) != T_STRING) {                         \
+                rb_raise(rb_eTypeError,                             \
+                    "array has to contain only strings (%s given)", \
+                    NIL_P(string) ?                                 \
+                        "NilClass" :                                \
+                        rb_class2name(CLASS_OF(string)));           \
+            }                                                       \
+            rb_ary_push(result, match_function(amatch, string));    \
+        }                                                           \
+        return result;                                              \
+    }                                                               \
+}
+
+#define RB_ACCESSOR(klass, type, name)                              \
+    rb_define_method(klass, #name, rb_##type##_##name, 0);            \
+    rb_define_method(klass, #name"=", rb_##type##_##name##_set, 1)
+
+#define DEF_RB_READER(type, function, name, converter)              \
+VALUE function(VALUE self)                                          \
+{                                                                   \
+    GET_STRUCT(type)                                                \
     return converter(amatch->name);                                 \
 }
 
-#define DEF_AMATCH_WRITER(name, type, caster, converter, check)     \
-VALUE                                                               \
-rb_amatch_ ## name ## _set(self, value)                             \
-    VALUE self;                                                     \
-    VALUE value;                                                    \
-{                                                                   \
-    type value_ ## type;                                            \
-    GET_AMATCH;                                                     \
-    caster(value);                                                  \
-    value_ ## type = converter(value);                              \
-    if (!(value_ ## type check))                                    \
-        rb_raise(rb_eTypeError, "check of value " #check " failed");\
-    amatch->name = value_ ## type;                                  \
-    return Qnil;                                                    \
+#define DEF_RB_WRITER(type, function, name, vtype, caster, converter, check)\
+VALUE function(VALUE self, VALUE value)                                 \
+{                                                                       \
+    vtype value_ ## vtype;                                              \
+    GET_STRUCT(type)                                                    \
+    caster(value);                                                      \
+    value_ ## vtype = converter(value);                                 \
+    if (!(value_ ## vtype check))                                       \
+        rb_raise(rb_eTypeError, "check of value " #check " failed");    \
+    amatch->name = value_ ## vtype;                                     \
+    return Qnil;                                                        \
 }
+
 
 #define CAST2FLOAT(obj) \
     if (TYPE(obj) != T_FLOAT && rb_respond_to(obj, id_to_f))    \
@@ -66,32 +141,45 @@ rb_amatch_ ## name ## _set(self, value)                             \
         b_len = RSTRING(string)->len;                   \
 
 /*
- * The core object of the Amatch class
+ * C structures of the Amatch classes
  */
 
-typedef struct AmatchStruct {
+typedef struct GeneralStruct {
+    char        *pattern;
+    char        pattern_len;
+} General;
+
+DEF_ALLOCATOR(General)
+DEF_PATTERN_ACCESSOR(General)
+DEF_ITERATE_STRINGS(General)
+
+typedef struct LevenshteinStruct {
+    char        *pattern;
+    char        pattern_len;
     double      substitution;
     double      deletion;
     double      insertion;
+} Levenshtein;
+
+DEF_ALLOCATOR(Levenshtein)
+DEF_PATTERN_ACCESSOR(Levenshtein)
+DEF_ITERATE_STRINGS(Levenshtein)
+
+static void Levenshtein_reset_weights(Levenshtein *self)
+{
+    self->substitution = 1;
+    self->deletion     = 1;
+    self->insertion    = 1;
+}
+
+typedef struct PairDistanceStruct {
     char        *pattern;
     char        pattern_len;
     PairArray   *pattern_pair_array;
-} Amatch;
+} PairDistance;
 
-static Amatch *Amatch_allocate()
-{
-    Amatch *amatch = ALLOC(Amatch);
-    MEMZERO(amatch, Amatch, 1);
-    return amatch;
-}
-
-static void amatch_reset_weights(amatch)
-    Amatch *amatch;
-{
-    amatch->substitution = 1;
-    amatch->deletion     = 1;
-    amatch->insertion    = 1;
-}
+DEF_ALLOCATOR(PairDistance)
+DEF_PATTERN_ACCESSOR(PairDistance)
 
 /*
  * Levenshtein edit distances are computed here:
@@ -118,7 +206,7 @@ static void amatch_reset_weights(amatch)
         c = (c + 1) % 2;                                                    \
     }
 
-static VALUE amatch_levenshtein_match(Amatch *amatch, VALUE string)
+static VALUE Levenshtein_match(Levenshtein *amatch, VALUE string)
 {
     VALUE result;
     char *a_ptr, *b_ptr;
@@ -144,7 +232,7 @@ static VALUE amatch_levenshtein_match(Amatch *amatch, VALUE string)
     return result;
 }
 
-static VALUE amatch_levenshtein_search(Amatch *amatch, VALUE string)
+static VALUE Levenshtein_search(Levenshtein *amatch, VALUE string)
 {
     VALUE result;
     char *a_ptr, *b_ptr;
@@ -176,8 +264,8 @@ static VALUE amatch_levenshtein_search(Amatch *amatch, VALUE string)
  * Pair distances are computed here:
  */
 
-static VALUE amatch_pair_distance(
-        Amatch *amatch, VALUE string, VALUE regexp, int use_regexp)
+static VALUE pair_distance(
+        PairDistance *amatch, VALUE string, VALUE regexp, int use_regexp)
 {
     double result;
     VALUE tokens;
@@ -216,7 +304,7 @@ static VALUE amatch_pair_distance(
  * Hamming distances are computed here:
  */
 
-static VALUE amatch_hamming(Amatch *amatch, VALUE string)
+static VALUE hamming(General *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
     int a_len, b_len;
@@ -238,7 +326,7 @@ static VALUE amatch_hamming(Amatch *amatch, VALUE string)
  * Longest Common Subsequence computation
  */
 
-static VALUE amatch_longest_subsequence(Amatch *amatch, VALUE string)
+static VALUE longest_subsequence(General *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
     int a_len, b_len;
@@ -275,7 +363,7 @@ static VALUE amatch_longest_subsequence(Amatch *amatch, VALUE string)
  * Longest Common Subsequence computation
  */
 
-static VALUE amatch_longest_substring(Amatch *amatch, VALUE string)
+static VALUE amatch_longest_substring(General *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
     int a_len, b_len;
@@ -309,136 +397,90 @@ static VALUE amatch_longest_substring(Amatch *amatch, VALUE string)
 }
 
 /*
- * A few helper functions go here:
- */
-
-static VALUE iterate_strings(VALUE self, VALUE strings,
-    VALUE (*match_function) (Amatch *amatch, VALUE strings))
-{
-    GET_AMATCH;
-    if (TYPE(strings) == T_STRING) {
-        return match_function(amatch, strings);
-    } else {
-        Check_Type(strings, T_ARRAY);
-        int i;
-        VALUE result = rb_ary_new2(RARRAY(strings)->len);
-        for (i = 0; i < RARRAY(strings)->len; i++) {
-            VALUE string = rb_ary_entry(strings, i);
-            if (TYPE(string) != T_STRING) {
-                rb_raise(rb_eTypeError,
-                    "array has to contain only strings (%s given)",
-                    NIL_P(string) ?
-                        "NilClass" :
-                        rb_class2name(CLASS_OF(string)));
-            }
-            rb_ary_push(result, match_function(amatch, string));
-        }
-        return result;
-    }
-}
-
-/*
  * Ruby API
  */
 
-static void rb_amatch_free(Amatch *amatch)
-{
-    MEMZERO(amatch->pattern, char, amatch->pattern_len);
-    free(amatch->pattern);
-    MEMZERO(amatch, Amatch, 1);
-    free(amatch);
-}
+/* Levenshtein */
 
-static VALUE rb_amatch_s_allocate(VALUE klass)
-{
-    Amatch *amatch = Amatch_allocate();
-    return Data_Wrap_Struct(klass, NULL, rb_amatch_free, amatch);
-}
+DEF_RB_FREE(Levenshtein, Levenshtein)
+DEF_RB_READER(Levenshtein, rb_Levenshtein_substitution, substitution,
+    rb_float_new)
+DEF_RB_READER(Levenshtein, rb_Levenshtein_deletion, deletion,
+    rb_float_new)
+DEF_RB_READER(Levenshtein, rb_Levenshtein_insertion, insertion,
+    rb_float_new)
 
-static void amatch_pattern_set(Amatch *amatch, VALUE pattern)
-{
-    Check_Type(pattern, T_STRING);
-    free(amatch->pattern);
-    amatch->pattern_len = RSTRING(pattern)->len;
-    amatch->pattern = ALLOC_N(char, amatch->pattern_len);
-    MEMCPY(amatch->pattern, RSTRING(pattern)->ptr, char, RSTRING(pattern)->len);
-}
-  
-static VALUE rb_amatch_pattern(VALUE self)
-{
-    GET_AMATCH;
-    return rb_str_new(amatch->pattern, amatch->pattern_len);
-}
+DEF_RB_WRITER(Levenshtein, rb_Levenshtein_substitution_set, substitution,
+    float, CAST2FLOAT, FLOAT2C, >= 0)
+DEF_RB_WRITER(Levenshtein, rb_Levenshtein_deletion_set, deletion,
+    float, CAST2FLOAT, FLOAT2C, >= 0)
+DEF_RB_WRITER(Levenshtein, rb_Levenshtein_insertion_set, insertion,
+    float, CAST2FLOAT, FLOAT2C, >= 0)
 
-static VALUE rb_amatch_pattern_set(VALUE self, VALUE pattern)
+static VALUE rb_Levenshtein_reset_weights(VALUE self)
 {
-    GET_AMATCH;
-    amatch_pattern_set(amatch, pattern);
-    return Qnil;
-}
-
-DEF_AMATCH_READER(substitution, rb_float_new)
-DEF_AMATCH_READER(deletion, rb_float_new)
-DEF_AMATCH_READER(insertion, rb_float_new)
-
-DEF_AMATCH_WRITER(substitution, float, CAST2FLOAT, FLOAT2C, >= 0)
-DEF_AMATCH_WRITER(deletion, float, CAST2FLOAT, FLOAT2C, >= 0)
-DEF_AMATCH_WRITER(insertion, float, CAST2FLOAT, FLOAT2C, >= 0)
-
-static VALUE rb_amatch_reset_weights(VALUE self)
-{
-    GET_AMATCH;
-    amatch_reset_weights(amatch);
+    GET_STRUCT(Levenshtein)
+    Levenshtein_reset_weights(amatch);
     return self;
 }
 
-static VALUE rb_amatch_initialize(VALUE self, VALUE pattern)
+static VALUE rb_Levenshtein_initialize(VALUE self, VALUE pattern)
 {
-    GET_AMATCH;
-    amatch_pattern_set(amatch, pattern);
-    amatch_reset_weights(amatch);
+    GET_STRUCT(Levenshtein)
+    Levenshtein_pattern_set(amatch, pattern);
+    Levenshtein_reset_weights(amatch);
     return self;
 }
 
-VALUE rb_amatch_new(VALUE klass, VALUE pattern)
-{
-    VALUE obj = rb_amatch_s_allocate(klass);
-    rb_amatch_initialize(obj, pattern);
-    return obj;
-}
+DEF_CONSTRUCTOR(Levenshtein, Levenshtein)
 
-static VALUE rb_amatch_levenshtein_match(VALUE self, VALUE strings)
+static VALUE rb_Levenshtein_match(VALUE self, VALUE strings)
 {                                                                            
-    return iterate_strings(self, strings, amatch_levenshtein_match);
+    GET_STRUCT(Levenshtein)
+    return Levenshtein_iterate_strings(amatch, strings, Levenshtein_match);
 }
 
-static VALUE rb_str_levenshtein_match(VALUE self, VALUE strings)
+static VALUE rb_str_Levenshtein_match(VALUE self, VALUE strings)
 {
-    VALUE amatch = rb_amatch_new(rb_cAmatch, self);
-    return rb_amatch_levenshtein_match(amatch, strings);
+    VALUE amatch = rb_Levenshtein_new(rb_cLevenshtein, self);
+    return rb_Levenshtein_match(amatch, strings);
 }
 
-static VALUE rb_amatch_levenshtein_search(VALUE self, VALUE strings)
+static VALUE rb_Levenshtein_search(VALUE self, VALUE strings)
 {                                                                            
-    return iterate_strings(self, strings, amatch_levenshtein_search);
+    GET_STRUCT(Levenshtein)
+    return Levenshtein_iterate_strings(amatch, strings, Levenshtein_search);
 }
 
-static VALUE rb_str_levenshtein_search(VALUE self, VALUE strings)
+static VALUE rb_str_Levenshtein_search(VALUE self, VALUE strings)
 {
-    VALUE amatch = rb_amatch_new(rb_cAmatch, self);
-    return rb_amatch_levenshtein_search(amatch, strings);
+    VALUE amatch = rb_Levenshtein_new(rb_cLevenshtein, self);
+    return rb_Levenshtein_search(amatch, strings);
 }
 
-static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
+/* Pair Distance */
+
+DEF_RB_FREE(PairDistance, PairDistance)
+
+static VALUE rb_PairDistance_initialize(VALUE self, VALUE pattern)
+{
+    GET_STRUCT(PairDistance)
+    PairDistance_pattern_set(amatch, pattern);
+    return self;
+}
+
+DEF_CONSTRUCTOR(PairDistance, PairDistance)
+
+static VALUE rb_pair_distance(int argc, VALUE *argv, VALUE self)
 {                                                                            
     VALUE result, strings, regexp = Qnil;
     int use_regexp;
-    GET_AMATCH;
+    GET_STRUCT(PairDistance)
 
     rb_scan_args(argc, argv, "11", &strings, &regexp);
     use_regexp = NIL_P(regexp) && argc != 2;
     if (TYPE(strings) == T_STRING) {
-        result = amatch_pair_distance(amatch, strings, regexp, use_regexp);
+        result = pair_distance(amatch, strings, regexp, use_regexp);
     } else {
         Check_Type(strings, T_ARRAY);
         int i;
@@ -453,7 +495,7 @@ static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
                         rb_class2name(CLASS_OF(string)));
             }
             rb_ary_push(result,
-                amatch_pair_distance(amatch, string, regexp, use_regexp));
+                pair_distance(amatch, string, regexp, use_regexp));
         }
     }
     pair_array_destroy(amatch->pattern_pair_array);
@@ -463,75 +505,147 @@ static VALUE rb_amatch_pair_distance(int argc, VALUE *argv, VALUE self)
 
 static VALUE rb_str_pair_distance(VALUE self, VALUE strings)
 {
-    VALUE amatch = rb_amatch_new(rb_cAmatch, self);
-    return rb_amatch_pair_distance(1, &strings, amatch);
+    VALUE amatch = rb_PairDistance_new(rb_cLevenshtein, self);
+    return rb_pair_distance(1, &strings, amatch);
 }
 
-static VALUE rb_amatch_hamming(VALUE self, VALUE strings)
+/* Hamming */
+
+DEF_RB_FREE(Hamming, General)
+
+static VALUE rb_Hamming_initialize(VALUE self, VALUE pattern)
+{
+    GET_STRUCT(General)
+    General_pattern_set(amatch, pattern);
+    return self;
+}
+
+DEF_CONSTRUCTOR(Hamming, General)
+
+static VALUE rb_hamming(VALUE self, VALUE strings)
 {                                                                            
-    return iterate_strings(self, strings, amatch_hamming);
+    GET_STRUCT(General)
+    return General_iterate_strings(amatch, strings, hamming);
 }
 
 static VALUE rb_str_hamming(VALUE self, VALUE strings)
 {
-    VALUE amatch = rb_amatch_new(rb_cAmatch, self);
-    return rb_amatch_hamming(amatch, strings);
+    VALUE amatch = rb_Hamming_new(rb_cLevenshtein, self);
+    return rb_hamming(amatch, strings);
 }
 
-static VALUE rb_amatch_longest_subsequence(VALUE self, VALUE strings)
+/* Longest Common Subsequence */
+
+DEF_RB_FREE(LongestSubsequence, General)
+
+static VALUE rb_LongestSubsequence_initialize(VALUE self, VALUE pattern)
+{
+    GET_STRUCT(General)
+    General_pattern_set(amatch, pattern);
+    return self;
+}
+
+DEF_CONSTRUCTOR(LongestSubsequence, General)
+
+static VALUE rb_longest_subsequence(VALUE self, VALUE strings)
 {                                                                            
-    return iterate_strings(self, strings, amatch_longest_subsequence);
+    GET_STRUCT(General)
+    return General_iterate_strings(amatch, strings, longest_subsequence);
 }
 
 static VALUE rb_str_longest_subsequence(VALUE self, VALUE strings)
 {                                                                            
-    VALUE amatch = rb_amatch_new(rb_cAmatch, self);
-    return rb_amatch_longest_subsequence(amatch, strings);
+    VALUE amatch = rb_LongestSubsequence_new(rb_cLevenshtein, self);
+    return rb_longest_subsequence(amatch, strings);
 }
 
-static VALUE rb_amatch_longest_substring(VALUE self, VALUE strings)
-{                                                                            
-    return iterate_strings(self, strings, amatch_longest_substring);
+/* Longest Common Substring */
+
+DEF_RB_FREE(LongestSubstring, General)
+
+static VALUE rb_LongestSubstring_initialize(VALUE self, VALUE pattern)
+{
+    GET_STRUCT(General)
+    General_pattern_set(amatch, pattern);
+    return self;
+}
+
+DEF_CONSTRUCTOR(LongestSubstring, General)
+
+static VALUE rb_longest_substring(VALUE self, VALUE strings)
+{
+    GET_STRUCT(General)
+    return General_iterate_strings(amatch, strings, amatch_longest_substring);
 }
 
 static VALUE rb_str_longest_substring(VALUE self, VALUE strings)
 {                                                                            
-    VALUE amatch = rb_amatch_new(rb_cAmatch, self);
-    return rb_amatch_longest_substring(amatch, strings);
+    VALUE amatch = rb_LongestSubsequence_new(rb_cLevenshtein, self);
+    return rb_longest_substring(amatch, strings);
 }
+
+/* Initialisation */
 
 void Init_amatch()
 {
-    rb_cAmatch = rb_define_class("Amatch", rb_cObject);
-    rb_define_alloc_func(rb_cAmatch, rb_amatch_s_allocate);
-    rb_define_method(rb_cAmatch, "initialize", rb_amatch_initialize, 1);
+    rb_mAmatch = rb_define_module("Amatch");
 
-    AMATCH_ACCESSOR(pattern);
-    AMATCH_ACCESSOR(substitution);
-    AMATCH_ACCESSOR(deletion);
-    AMATCH_ACCESSOR(insertion);
-    rb_define_method(rb_cAmatch, "reset_weights", rb_amatch_reset_weights, 0);
+    /* Levenshtein */
+    rb_cLevenshtein = rb_define_class_under(rb_mAmatch, "Levenshtein",
+        rb_cObject);
+    rb_define_alloc_func(rb_cLevenshtein, rb_Levenshtein_s_allocate);
+    rb_define_method(rb_cLevenshtein, "initialize", rb_Levenshtein_initialize, 1);
+    RB_ACCESSOR(rb_cLevenshtein, Levenshtein, pattern);
+    RB_ACCESSOR(rb_cLevenshtein, Levenshtein, substitution);
+    RB_ACCESSOR(rb_cLevenshtein, Levenshtein, deletion);
+    RB_ACCESSOR(rb_cLevenshtein, Levenshtein, insertion);
+    rb_define_method(rb_cLevenshtein, "reset_weights",
+            rb_Levenshtein_reset_weights, 0);
 
-    rb_define_method(rb_cAmatch, "levenshtein_match",
-        rb_amatch_levenshtein_match, 1);
-    rb_define_method(rb_cString, "levenshtein_match",
-        rb_str_levenshtein_match, 1);
-    rb_define_method(rb_cAmatch, "levenshtein_search",
-        rb_amatch_levenshtein_search, 1);
-    rb_define_method(rb_cString, "levenshtein_search",
-        rb_str_levenshtein_search, 1);
-    rb_define_method(rb_cAmatch, "hamming", rb_amatch_hamming, 1);
+    rb_define_method(rb_cLevenshtein, "match", rb_Levenshtein_match, 1);
+    rb_define_method(rb_cString, "levenshtein_match", rb_str_Levenshtein_match, 1);
+    rb_define_method(rb_cLevenshtein, "search", rb_Levenshtein_search, 1);
+    rb_define_method(rb_cString, "levenshtein_search", rb_str_Levenshtein_search, 1);
+
+    /* Hamming */
+    rb_cHamming = rb_define_class_under(rb_mAmatch, "Hamming", rb_cObject);
+    rb_define_alloc_func(rb_cHamming, rb_Hamming_s_allocate);
+    rb_define_method(rb_cHamming, "initialize", rb_Hamming_initialize, 1);
+    RB_ACCESSOR(rb_cHamming, General, pattern);
+    rb_define_method(rb_cHamming, "hamming", rb_hamming, 1);
     rb_define_method(rb_cString, "hamming", rb_str_hamming, 1);
-    rb_define_method(rb_cAmatch, "pair_distance", rb_amatch_pair_distance, -1);
+
+    /* Pair Distance Metric */
+    rb_cPairDistance = rb_define_class_under(rb_mAmatch, "PairDistance",
+        rb_cObject);
+    rb_define_alloc_func(rb_cPairDistance, rb_PairDistance_s_allocate);
+    rb_define_method(rb_cPairDistance, "initialize", rb_PairDistance_initialize, 1);
+    RB_ACCESSOR(rb_cPairDistance, PairDistance, pattern);
+    rb_define_method(rb_cPairDistance, "pair_distance", rb_pair_distance, -1);
     rb_define_method(rb_cString, "pair_distance", rb_str_pair_distance, 1);
-    rb_define_method(rb_cAmatch, "longest_subsequence",
-        rb_amatch_longest_subsequence, 1);
+
+    /* Longest Common Subsequence */
+    rb_cLongestSubsequence = rb_define_class_under(rb_mAmatch,
+        "LongestSubsequence", rb_cObject);
+    rb_define_alloc_func(rb_cLongestSubsequence, rb_LongestSubsequence_s_allocate);
+    rb_define_method(rb_cLongestSubsequence, "initialize", rb_LongestSubsequence_initialize, 1);
+    RB_ACCESSOR(rb_cLongestSubsequence, General, pattern);
+    rb_define_method(rb_cLongestSubsequence, "longest_subsequence",
+        rb_longest_subsequence, 1);
     rb_define_method(rb_cString, "longest_subsequence",
         rb_str_longest_subsequence, 1);
-    rb_define_method(rb_cAmatch, "longest_substring",
-        rb_amatch_longest_substring, 1);
+
+    /* Longest Common Substring */
+    rb_cLongestSubstring = rb_define_class_under(rb_mAmatch,
+        "LongestSubstring", rb_cObject);
+    rb_define_alloc_func(rb_cLongestSubstring, rb_LongestSubstring_s_allocate);
+    rb_define_method(rb_cLongestSubstring, "initialize", rb_LongestSubstring_initialize, 1);
+    RB_ACCESSOR(rb_cLongestSubstring, General, pattern);
+    rb_define_method(rb_cLongestSubstring, "longest_substring",
+        rb_longest_substring, 1);
     rb_define_method(rb_cString, "longest_substring",
         rb_str_longest_substring, 1);
+
     id_split = rb_intern("split");
     id_to_f = rb_intern("to_f");
 }

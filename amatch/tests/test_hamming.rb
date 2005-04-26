@@ -2,11 +2,13 @@ require 'test/unit'
 require 'amatch'
 
 class TC_Hamming < Test::Unit::TestCase
+  include Amatch
+
   D = 0.000001
 
   def setup
-    @small   = Amatch.new('test')
-    @empty    = Amatch.new('')
+    @small   = Hamming.new('test')
+    @empty   = Hamming.new('')
   end
 
   def test_empty

@@ -2,14 +2,16 @@ require 'test/unit'
 require 'amatch'
 
 class TC_PairDistance < Test::Unit::TestCase
+  include Amatch
+
   D = 0.000001
 
   def setup
-    @single   = Amatch.new('test')
-    @empty    = Amatch.new('')
-    @france   = Amatch.new('republic of france')
-    @germany  = Amatch.new('federal republic of germany')
-    @csv      = Amatch.new('foo,bar,baz')
+    @single   = PairDistance.new('test')
+    @empty    = PairDistance.new('')
+    @france   = PairDistance.new('republic of france')
+    @germany  = PairDistance.new('federal republic of germany')
+    @csv      = PairDistance.new('foo,bar,baz')
   end
 
   def test_empty
