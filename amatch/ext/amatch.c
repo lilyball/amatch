@@ -6,8 +6,6 @@ static VALUE rb_mAmatch, rb_cLevenshtein, rb_cHamming, rb_cPairDistance,
 
 static ID id_split, id_to_f;
 
-/* Macromania goes here: */
-
 #define GET_STRUCT(klass)                 \
     klass *amatch;                        \
     Data_Get_Struct(self, klass, amatch);
@@ -591,17 +589,14 @@ void Init_amatch()
     rb_mAmatch = rb_define_module("Amatch");
 
     /* Levenshtein */
-    rb_cLevenshtein = rb_define_class_under(rb_mAmatch, "Levenshtein",
-        rb_cObject);
+    rb_cLevenshtein = rb_define_class_under(rb_mAmatch, "Levenshtein", rb_cObject);
     rb_define_alloc_func(rb_cLevenshtein, rb_Levenshtein_s_allocate);
     rb_define_method(rb_cLevenshtein, "initialize", rb_Levenshtein_initialize, 1);
     RB_ACCESSOR(rb_cLevenshtein, Levenshtein, pattern);
     RB_ACCESSOR(rb_cLevenshtein, Levenshtein, substitution);
     RB_ACCESSOR(rb_cLevenshtein, Levenshtein, deletion);
     RB_ACCESSOR(rb_cLevenshtein, Levenshtein, insertion);
-    rb_define_method(rb_cLevenshtein, "reset_weights",
-            rb_Levenshtein_reset_weights, 0);
-
+    rb_define_method(rb_cLevenshtein, "reset_weights", rb_Levenshtein_reset_weights, 0);
     rb_define_method(rb_cLevenshtein, "match", rb_Levenshtein_match, 1);
     rb_define_method(rb_cString, "levenshtein_match", rb_str_Levenshtein_match, 1);
     rb_define_method(rb_cLevenshtein, "search", rb_Levenshtein_search, 1);
@@ -613,38 +608,31 @@ void Init_amatch()
     rb_define_method(rb_cHamming, "initialize", rb_Hamming_initialize, 1);
     RB_ACCESSOR(rb_cHamming, General, pattern);
     rb_define_method(rb_cHamming, "match", rb_Hamming_match, 1);
-    rb_define_method(rb_cString, "hamming", rb_str_hamming, 1);
+    rb_define_method(rb_cString, "hamming_match", rb_str_hamming, 1);
 
     /* Pair Distance Metric */
-    rb_cPairDistance = rb_define_class_under(rb_mAmatch, "PairDistance",
-        rb_cObject);
+    rb_cPairDistance = rb_define_class_under(rb_mAmatch, "PairDistance", rb_cObject);
     rb_define_alloc_func(rb_cPairDistance, rb_PairDistance_s_allocate);
     rb_define_method(rb_cPairDistance, "initialize", rb_PairDistance_initialize, 1);
     RB_ACCESSOR(rb_cPairDistance, PairDistance, pattern);
     rb_define_method(rb_cPairDistance, "match", rb_PairDistance_match, -1);
-    rb_define_method(rb_cString, "pair_distance", rb_str_pair_distance, 1);
+    rb_define_method(rb_cString, "pair_distance_match", rb_str_pair_distance, 1);
 
     /* Longest Common Subsequence */
-    rb_cLongestSubsequence = rb_define_class_under(rb_mAmatch,
-        "LongestSubsequence", rb_cObject);
+    rb_cLongestSubsequence = rb_define_class_under(rb_mAmatch, "LongestSubsequence", rb_cObject);
     rb_define_alloc_func(rb_cLongestSubsequence, rb_LongestSubsequence_s_allocate);
     rb_define_method(rb_cLongestSubsequence, "initialize", rb_LongestSubsequence_initialize, 1);
     RB_ACCESSOR(rb_cLongestSubsequence, General, pattern);
-    rb_define_method(rb_cLongestSubsequence, "match",
-        rb_longest_subsequence_match, 1);
-    rb_define_method(rb_cString, "longest_subsequence",
-        rb_str_longest_subsequence, 1);
+    rb_define_method(rb_cLongestSubsequence, "match", rb_longest_subsequence_match, 1);
+    rb_define_method(rb_cString, "longest_subsequence_match", rb_str_longest_subsequence, 1);
 
     /* Longest Common Substring */
-    rb_cLongestSubstring = rb_define_class_under(rb_mAmatch,
-        "LongestSubstring", rb_cObject);
+    rb_cLongestSubstring = rb_define_class_under(rb_mAmatch, "LongestSubstring", rb_cObject);
     rb_define_alloc_func(rb_cLongestSubstring, rb_LongestSubstring_s_allocate);
     rb_define_method(rb_cLongestSubstring, "initialize", rb_LongestSubstring_initialize, 1);
     RB_ACCESSOR(rb_cLongestSubstring, General, pattern);
-    rb_define_method(rb_cLongestSubstring, "match",
-        rb_LongestSubstring_match_match, 1);
-    rb_define_method(rb_cString, "longest_substring",
-        rb_str_longest_substring, 1);
+    rb_define_method(rb_cLongestSubstring, "match", rb_LongestSubstring_match_match, 1);
+    rb_define_method(rb_cString, "longest_substring_match", rb_str_longest_substring, 1);
 
     id_split = rb_intern("split");
     id_to_f = rb_intern("to_f");

@@ -1,8 +1,6 @@
 #ifndef PAIR_H_INCLUDED
 #define PAIR_H_INCLUDED
 
-#include "ruby.h"
-
 enum { PAIR_ACTIVE = 1, PAIR_INACTIVE = 2 };
 
 typedef struct PairStruct {
