@@ -378,7 +378,7 @@ static VALUE longest_subsequence(General *amatch, VALUE string)
 }
 
 /*
- * Longest Common Subsequence computation
+ * Longest Common Substring computation
  */
 
 static VALUE amatch_LongestSubstring(General *amatch, VALUE string)
@@ -758,8 +758,15 @@ static VALUE rb_str_longest_subsequence_match(VALUE self, VALUE strings)
 /* 
  * Document-class: Amatch::LongestSubstring
  *
- * TODO
- *  
+ * The longest common substring is the longest substring, that is part of
+ * two strings. A substring is contiguous, while a subsequence need not to
+ * be. The longer the common substring is, the more similar the two strings
+ * will be.
+ *
+ * The longest common substring between 'string' and 'string' is 'string'
+ * again, thus the longest common substring length is 6. The longest common
+ * substring between 'string' and 'storing' is 'ring', thus the longest common
+ * substring length is 4. 
  */
 
 DEF_RB_FREE(LongestSubstring, General)
