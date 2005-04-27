@@ -2,13 +2,6 @@
 #include "pair.h"
 
 /*
- * Document-module: Amatch
- * 
- * TODO
- * 
- */
-
-/*
  * Document-method: pattern
  *
  * call-seq: pattern -> pattern string
@@ -421,8 +414,21 @@ static VALUE amatch_LongestSubstring(General *amatch, VALUE string)
 /* 
  * Document-class: Amatch::Levenshtein
  *
- * TODO
- *  
+ * The Levenshtein edit distance is defined as the minimal costs involved
+ * to transform one string into another by using three elementary
+ * operations: deletion, insertion and substitution of a character. To
+ * transform "water" into "wine", for instance, you have to substitute "a"
+ * -> "i": "witer", "t" -> "n": "winer" and delete "r": "wine". The edit
+ * distance between "water" and "wine" is 3, because you have to apply
+ * three operations. The edit distance between "wine" and "wine" is 0 of
+ * course: no operation is necessary for the transformation -- they're
+ * already the same string. It's easy to see that more similar strings have
+ * smaller edit distances than strings that differ a lot.
+ *
+ * You can als use different weights for every operation to prefer special
+ * operations over others. This extension of the Levenshtein edit distance
+ * is also known under the names: Needleman-Wunsch distance or Sellers
+ * algorithm.
  */
 
 DEF_RB_FREE(Levenshtein, Levenshtein)
@@ -542,10 +548,11 @@ DEF_CONSTRUCTOR(Levenshtein, Levenshtein)
 /*
  * call-seq: match(strings) -> results
  * 
- * Uses this Amatch::Levenshtein instance to match against
- * <code>strings</code>. <code>strings</code> has to be either a String or an
- * Array of Strings. The returned <code>results</code> are either a Float or an
- * Array of Floats respectively.
+ * Uses this Amatch::Levenshtein instance to match Levenshtein#pattern against
+ * <code>strings</code>. It returns the number of weighted character
+ * operations, usually the Levenshtein distance. <code>strings</code> has to be
+ * either a String or an Array of Strings. The returned <code>results</code>
+ * are either a Float or an Array of Floats respectively.
  */
 static VALUE rb_Levenshtein_match(VALUE self, VALUE strings)
 {                                                                            
@@ -554,7 +561,13 @@ static VALUE rb_Levenshtein_match(VALUE self, VALUE strings)
 }
 
 /*
- * TODO
+ * call-seq: levenshtein_match(strings) -> results
+ *
+ * If called on a String, this string is used as a Levenshtein#pattern to match
+ * against <code>strings</code>. It returns the number of character operations,
+ * that is  the Levenshtein distance. <code>strings</code> has to be either a
+ * String or an Array of Strings. The returned <code>results</code> are either
+ * a Float or an Array of Floats respectively.
  */
 static VALUE rb_str_Levenshtein_match(VALUE self, VALUE strings)
 {
@@ -563,7 +576,13 @@ static VALUE rb_str_Levenshtein_match(VALUE self, VALUE strings)
 }
 
 /*
- * TODO
+ * call-seq: search(strings) -> results
+ *
+ * searches Levenshtein#pattern in <code>strings</code> and returns the edit
+ * distance (the sum of weighted character operations) as a Float value, by
+ * greedy trimming prefixes or postfixes of the match. <code>strings</code> has
+ * to be either a String or an Array of Strings. The returned
+ * <code>results</code> are either a Float or an Array of Floats respectively.
  */
 static VALUE rb_Levenshtein_search(VALUE self, VALUE strings)
 {                                                                            
@@ -572,7 +591,14 @@ static VALUE rb_Levenshtein_search(VALUE self, VALUE strings)
 }
 
 /*
- * TODO
+ * call-seq: levenshtein_search(strings) -> results
+ *
+ * If called on a String, this string is used as a Levenshtein#pattern to
+ * search in <code>strings</code>. It returns the number of character
+ * operations, that is  the Levenshtein distance, minus prefixes and postfixes
+ * of the found pattern. <code>strings</code> has to be either a String or an
+ * Array of Strings. The returned <code>results</code> are either a Float or an
+ * Array of Floats respectively.
  */
 static VALUE rb_str_Levenshtein_search(VALUE self, VALUE strings)
 {
@@ -606,7 +632,7 @@ DEF_CONSTRUCTOR(PairDistance, PairDistance)
 /*
  * call-seq: match(strings) -> results
  * 
- * Uses this Amatch::PairDistance instance to match against
+ * Uses this Amatch::PairDistance instance to match  Levenshtein#pattern against
  * <code>strings</code>. <code>strings</code> has to be either a String or an
  * Array of Strings. The returned <code>results</code> are either a Float or an
  * Array of Floats respectively.
@@ -682,7 +708,7 @@ DEF_CONSTRUCTOR(Hamming, General)
 /*
  * call-seq: match(strings) -> results
  * 
- * Uses this Amatch::Hamming instance to match against
+ * Uses this Amatch::Hamming instance to match  Levenshtein#pattern against
  * <code>strings</code>, that is compute the hamming distance between
  * <code>pattern</code> and <code>strings</code>. <code>strings</code> has to
  * be either a String or an Array of Strings. The returned <code>results</code>
@@ -734,11 +760,11 @@ DEF_CONSTRUCTOR(LongestSubsequence, General)
 /*
  * call-seq: match(strings) -> results
  * 
- * Uses this Amatch::LongestSubsequence instance to match against
- * <code>strings</code>, that is compute the length of the longest common
- * subsequence. <code>strings</code> has to be either a String or an Array of
- * Strings. The returned <code>results</code> are either a Fixnum or an Array
- * of Fixnums respectively.
+ * Uses this Amatch::LongestSubsequence instance to match  Levenshtein#pattern
+ * against <code>strings</code>, that is compute the length of the longest
+ * common subsequence. <code>strings</code> has to be either a String or an
+ * Array of Strings. The returned <code>results</code> are either a Fixnum or
+ * an Array of Fixnums respectively.
  */
 static VALUE rb_longest_subsequence_match(VALUE self, VALUE strings)
 {                                                                            
@@ -788,10 +814,10 @@ DEF_CONSTRUCTOR(LongestSubstring, General)
 /*
  * call-seq: match(strings) -> results
  * 
- * Uses this Amatch::LongestSubstring instance to match against
- * <code>strings</code>. <code>strings</code> has to be either a String or an
- * Array of Strings. The returned <code>results</code> are either a Fixnum or an
- * Array of Fixnums respectively.
+ * Uses this Amatch::LongestSubstring instance to match  Levenshtein#pattern
+ * against <code>strings</code>. <code>strings</code> has to be either a String
+ * or an Array of Strings. The returned <code>results</code> are either a
+ * Fixnum or an Array of Fixnums respectively.
  */
 static VALUE rb_LongestSubstring_match_match(VALUE self, VALUE strings)
 {
@@ -808,7 +834,67 @@ static VALUE rb_str_longest_substring_match(VALUE self, VALUE strings)
     return rb_LongestSubstring_match_match(amatch, strings);
 }
 
-/* Initialisation */
+/*
+ * = amatch - Approximate Matching Extension for Ruby
+ *
+ * == Description
+ *
+ * This is a collection of classes that can be used for Approximate
+ * matching, searching, and comparing of Strings. They implement algorithms
+ * that compute the Levenshtein edit distance, the Hamming distance, the
+ * longest common subsequence length, the longest common substring length, and
+ * the pair distance metric.
+ *
+ * == Author
+ *
+ * Florian Frank mailto:flori@ping.de
+ *
+ * == License
+ *
+ * This is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License Version 2 as published by
+ * the Free Software Foundation: http://www.gnu.org/copyleft/gpl.html
+ *
+ * == Download
+ *
+ * The latest version of <b>amatch</b> can be found at
+ *
+ * * http://rubyforge.org/frs/?group_id=390
+ *
+ * Online Documentation should be located at
+ *
+ * * http://amatch.rubyforge.org
+ *
+ * == Examples
+ *  require 'amatch'
+ *  include Amatch
+ *
+ *  m = Levenshtein.new("pattern")
+ *  m.match("pattren")                              # => 2.0
+ *  m.match(["pattren","parent"])                   # => [2.0, 4.0]
+ *  m.search("abcpattrendef")                       # => 2.0
+ *  "pattern".levenshtein_match("pattren")          # => 2.0
+ *  "pattern".levenshtein_search("abcpattrendef")   # => 2.0
+ *
+ *  m = Hamming.new("pattern")
+ *  m.match("pattren")                  # => 2
+ *  "pattern".hamming_match("pattren")  # => 2
+ *  
+ *  m = PairDistance.new("pattern")
+ *  m.match("pattr en")                         # => 0.545454545454545
+ *  m.match("pattr en", nil)                    # => 0.461538461538462
+ *  m.match("pattr en", /t+/)                   # => 0.285714285714286
+ *  "pattern".pair_distance_match("pattr en")   # => 0.545454545454545
+ *
+ *  m = LongestSubsequence.new("pattern")
+ *  m.match("pattren")                              # => 6
+ *  "pattern".longest_subsequence_match("pattren")  # => 6
+ *
+ *  m = LongestSubstring.new("pattern")
+ *  m.match("pattren")                              # => 4
+ *  "pattern".longest_substring_match("pattren")    # => 4
+ *
+ */
 
 void Init_amatch()
 {
