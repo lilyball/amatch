@@ -8,6 +8,23 @@
  * 
  */
 
+/*
+ * Document-method: pattern
+ *
+ * call-seq: pattern -> pattern string
+ *
+ * Returns the current pattern string of this instance.
+ */
+
+/*
+ * Document-method: pattern=
+ *
+ * call-seq: pattern=(pattern)
+ * 
+ * Sets the current pattern string of this instance to <code>pattern</code>.
+ */
+
+
 static VALUE rb_mAmatch, rb_cLevenshtein, rb_cHamming, rb_cPairDistance,
              rb_cLongestSubsequence, rb_cLongestSubstring;
 
@@ -402,27 +419,86 @@ static VALUE amatch_LongestSubstring(General *amatch, VALUE string)
  */
 
 /* 
- * Document-class: Levenshtein
+ * Document-class: Amatch::Levenshtein
  *
  * TODO
  *  
  */
 
 DEF_RB_FREE(Levenshtein, Levenshtein)
+
+/*
+ * Document-method: substitution
+ *
+ * call-seq: substitution -> weight
+ *
+ * Returns the weight of the substitution operation, that is used to compute
+ * the Levenshtein distance.
+ */
 DEF_RB_READER(Levenshtein, rb_Levenshtein_substitution, substitution,
     rb_float_new)
+
+/*
+ * Document-method: deletion
+ *
+ * call-seq: deletion -> weight
+ *
+ * Returns the weight of the deletion operation, that is used to compute
+ * the Levenshtein distance.
+ */
 DEF_RB_READER(Levenshtein, rb_Levenshtein_deletion, deletion,
     rb_float_new)
+
+/*
+ * Document-method: insertion
+ *
+ * call-seq: insertion -> weight
+ *
+ * Returns the weight of the insertion operation, that is used to compute
+ * the Levenshtein distance.
+ */
 DEF_RB_READER(Levenshtein, rb_Levenshtein_insertion, insertion,
     rb_float_new)
 
+/*
+ * Document-method: substitution=
+ *
+ * call-seq: substitution=(weight)
+ *
+ * Sets the weight of the substitution operation, that is used to compute
+ * the Levenshtein distance, to <code>weight</code>. The <code>weight</code>
+ * should be a Float value >= 0.0.
+ */
 DEF_RB_WRITER(Levenshtein, rb_Levenshtein_substitution_set, substitution,
     float, CAST2FLOAT, FLOAT2C, >= 0)
+
+/*
+ * Document-method: deletion=
+ *
+ * call-seq: deletion=(weight)
+ *
+ * Sets the weight of the deletion operation, that is used to compute
+ * the Levenshtein distance, to <code>weight</code>. The <code>weight</code>
+ * should be a Float value >= 0.0.
+ */
 DEF_RB_WRITER(Levenshtein, rb_Levenshtein_deletion_set, deletion,
     float, CAST2FLOAT, FLOAT2C, >= 0)
+
+/*
+ * Document-method: insertion=
+ *
+ * call-seq: insertion=(weight)
+ *
+ * Sets the weight of the insertion operation, that is used to compute
+ * the Levenshtein distance, to <code>weight</code>. The <code>weight</code>
+ * should be a Float value >= 0.0.
+ */
 DEF_RB_WRITER(Levenshtein, rb_Levenshtein_insertion_set, insertion,
     float, CAST2FLOAT, FLOAT2C, >= 0)
 
+/*
+ * Resets all weights (substitution, deletion, and insertion) to 1.0.
+ */
 static VALUE rb_Levenshtein_reset_weights(VALUE self)
 {
     GET_STRUCT(Levenshtein)
@@ -430,6 +506,12 @@ static VALUE rb_Levenshtein_reset_weights(VALUE self)
     return self;
 }
 
+/*
+ * call-seq: new(pattern)
+ *
+ * Creates a new Amatch::Levenshtein instance from <code>pattern</code>,
+ * with all weights initially set to 1.0.
+ */
 static VALUE rb_Levenshtein_initialize(VALUE self, VALUE pattern)
 {
     GET_STRUCT(Levenshtein)
@@ -440,24 +522,58 @@ static VALUE rb_Levenshtein_initialize(VALUE self, VALUE pattern)
 
 DEF_CONSTRUCTOR(Levenshtein, Levenshtein)
 
+/*
+ * Document-method: pattern
+ *
+ * call-seq: pattern -> pattern string
+ *
+ * Returns the current pattern string of this Amatch::Levenshtein instance.
+ */
+
+/*
+ * Document-method: pattern=
+ *
+ * call-seq: pattern=(pattern)
+ * 
+ * Sets the current pattern string of this Amatch::Levenshtein instance to
+ * <code>pattern</code>.
+ */
+
+/*
+ * call-seq: match(strings) -> results
+ * 
+ * Uses this Amatch::Levenshtein instance to match against
+ * <code>strings</code>. <code>strings</code> has to be either a String or an
+ * Array of Strings. The returned <code>results</code> are either a Float or an
+ * Array of Floats respectively.
+ */
 static VALUE rb_Levenshtein_match(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(Levenshtein)
     return Levenshtein_iterate_strings(amatch, strings, Levenshtein_match);
 }
 
+/*
+ * TODO
+ */
 static VALUE rb_str_Levenshtein_match(VALUE self, VALUE strings)
 {
     VALUE amatch = rb_Levenshtein_new(rb_cLevenshtein, self);
     return rb_Levenshtein_match(amatch, strings);
 }
 
+/*
+ * TODO
+ */
 static VALUE rb_Levenshtein_search(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(Levenshtein)
     return Levenshtein_iterate_strings(amatch, strings, Levenshtein_search);
 }
 
+/*
+ * TODO
+ */
 static VALUE rb_str_Levenshtein_search(VALUE self, VALUE strings)
 {
     VALUE amatch = rb_Levenshtein_new(rb_cLevenshtein, self);
@@ -465,7 +581,7 @@ static VALUE rb_str_Levenshtein_search(VALUE self, VALUE strings)
 }
 
 /* 
- * Document-class: PairDistance
+ * Document-class: Amatch::PairDistance
  *
  * TODO
  *  
@@ -473,6 +589,11 @@ static VALUE rb_str_Levenshtein_search(VALUE self, VALUE strings)
 
 DEF_RB_FREE(PairDistance, PairDistance)
 
+/*
+ * call-seq: new(pattern)
+ *
+ * Creates a new Amatch::PairDistance instance from <code>pattern</code>.
+ */
 static VALUE rb_PairDistance_initialize(VALUE self, VALUE pattern)
 {
     GET_STRUCT(PairDistance)
@@ -482,6 +603,14 @@ static VALUE rb_PairDistance_initialize(VALUE self, VALUE pattern)
 
 DEF_CONSTRUCTOR(PairDistance, PairDistance)
 
+/*
+ * call-seq: match(strings) -> results
+ * 
+ * Uses this Amatch::PairDistance instance to match against
+ * <code>strings</code>. <code>strings</code> has to be either a String or an
+ * Array of Strings. The returned <code>results</code> are either a Float or an
+ * Array of Floats respectively.
+ */
 static VALUE rb_PairDistance_match(int argc, VALUE *argv, VALUE self)
 {                                                                            
     VALUE result, strings, regexp = Qnil;
@@ -514,16 +643,33 @@ static VALUE rb_PairDistance_match(int argc, VALUE *argv, VALUE self)
     return result;
 }
 
-static VALUE rb_str_pair_distance(VALUE self, VALUE strings)
+/*
+ * TODO
+ */
+static VALUE rb_str_pair_distance_match(VALUE self, VALUE strings)
 {
     VALUE amatch = rb_PairDistance_new(rb_cLevenshtein, self);
     return rb_PairDistance_match(1, &strings, amatch);
 }
 
-/* Hamming */
+/* 
+ * Document-class: Amatch::Hamming
+ *
+ *  This class computes the Hamming distance between two strings.
+ *
+ *  The Hamming distance between two strings is the number of characters,
+ *  that are different. Thus a hamming distance of 0 means an exact
+ *  match, a hamming distance of 1 means one character is different, and so
+ *  on.
+ */
 
 DEF_RB_FREE(Hamming, General)
 
+/*
+ * call-seq: new(pattern)
+ *
+ * Creates a new Amatch::Hamming instance from <code>pattern</code>.
+ */
 static VALUE rb_Hamming_initialize(VALUE self, VALUE pattern)
 {
     GET_STRUCT(General)
@@ -533,22 +679,49 @@ static VALUE rb_Hamming_initialize(VALUE self, VALUE pattern)
 
 DEF_CONSTRUCTOR(Hamming, General)
 
+/*
+ * call-seq: match(strings) -> results
+ * 
+ * Uses this Amatch::Hamming instance to match against
+ * <code>strings</code>, that is compute the hamming distance between
+ * <code>pattern</code> and <code>strings</code>. <code>strings</code> has to
+ * be either a String or an Array of Strings. The returned <code>results</code>
+ * are either a Fixnum or an Array of Fixnums respectively.
+ */
 static VALUE rb_Hamming_match(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(General)
     return General_iterate_strings(amatch, strings, hamming);
 }
 
-static VALUE rb_str_hamming(VALUE self, VALUE strings)
+/*
+ * TODO
+ */
+static VALUE rb_str_hamming_match(VALUE self, VALUE strings)
 {
     VALUE amatch = rb_Hamming_new(rb_cLevenshtein, self);
     return rb_Hamming_match(amatch, strings);
 }
 
-/* Longest Common Subsequence */
-
+/* 
+ * Document-class: Amatch::LongestSubsequence
+ *
+ *  This class computes the length of the longest subsequence common to two
+ *  strings. A subsequence doesn't have to be contiguous. The longer the common
+ *  subsequence is, the more similar the two strings will be.
+ *
+ *  The longest common subsequence between "test" and "test" is of length 4,
+ *  because "test" itself is this subsequence. The longest common subsequence
+ *  between "test" and "east" is "e", "s", "t" and the length of the
+ *  sequence is 3.
+ */
 DEF_RB_FREE(LongestSubsequence, General)
 
+/*
+ * call-seq: new(pattern)
+ *
+ * Creates a new Amatch::LongestSubsequence instance from <code>pattern</code>.
+ */
 static VALUE rb_LongestSubsequence_initialize(VALUE self, VALUE pattern)
 {
     GET_STRUCT(General)
@@ -558,22 +731,44 @@ static VALUE rb_LongestSubsequence_initialize(VALUE self, VALUE pattern)
 
 DEF_CONSTRUCTOR(LongestSubsequence, General)
 
+/*
+ * call-seq: match(strings) -> results
+ * 
+ * Uses this Amatch::LongestSubsequence instance to match against
+ * <code>strings</code>, that is compute the length of the longest common
+ * subsequence. <code>strings</code> has to be either a String or an Array of
+ * Strings. The returned <code>results</code> are either a Fixnum or an Array
+ * of Fixnums respectively.
+ */
 static VALUE rb_longest_subsequence_match(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(General)
     return General_iterate_strings(amatch, strings, longest_subsequence);
 }
 
-static VALUE rb_str_longest_subsequence(VALUE self, VALUE strings)
+/*
+ * TODO
+ */
+static VALUE rb_str_longest_subsequence_match(VALUE self, VALUE strings)
 {                                                                            
     VALUE amatch = rb_LongestSubsequence_new(rb_cLevenshtein, self);
     return rb_longest_subsequence_match(amatch, strings);
 }
 
-/* Longest Common Substring */
+/* 
+ * Document-class: Amatch::LongestSubstring
+ *
+ * TODO
+ *  
+ */
 
 DEF_RB_FREE(LongestSubstring, General)
 
+/*
+ * call-seq: new(pattern)
+ *
+ * Creates a new Amatch::LongestSubstring instance from <code>pattern</code>.
+ */
 static VALUE rb_LongestSubstring_initialize(VALUE self, VALUE pattern)
 {
     GET_STRUCT(General)
@@ -583,13 +778,24 @@ static VALUE rb_LongestSubstring_initialize(VALUE self, VALUE pattern)
 
 DEF_CONSTRUCTOR(LongestSubstring, General)
 
+/*
+ * call-seq: match(strings) -> results
+ * 
+ * Uses this Amatch::LongestSubstring instance to match against
+ * <code>strings</code>. <code>strings</code> has to be either a String or an
+ * Array of Strings. The returned <code>results</code> are either a Fixnum or an
+ * Array of Fixnums respectively.
+ */
 static VALUE rb_LongestSubstring_match_match(VALUE self, VALUE strings)
 {
     GET_STRUCT(General)
     return General_iterate_strings(amatch, strings, amatch_LongestSubstring);
 }
 
-static VALUE rb_str_longest_substring(VALUE self, VALUE strings)
+/*
+ * TODO
+ */
+static VALUE rb_str_longest_substring_match(VALUE self, VALUE strings)
 {                                                                            
     VALUE amatch = rb_LongestSubsequence_new(rb_cLevenshtein, self);
     return rb_LongestSubstring_match_match(amatch, strings);
@@ -605,10 +811,14 @@ void Init_amatch()
     rb_cLevenshtein = rb_define_class_under(rb_mAmatch, "Levenshtein", rb_cObject);
     rb_define_alloc_func(rb_cLevenshtein, rb_Levenshtein_s_allocate);
     rb_define_method(rb_cLevenshtein, "initialize", rb_Levenshtein_initialize, 1);
-    rb_define_method(rb_cLevenshtein, "pattern", rb_Levenshtein_pattern, 0); rb_define_method(rb_cLevenshtein, "pattern=", rb_Levenshtein_pattern_set, 1);
-    rb_define_method(rb_cLevenshtein, "substitution", rb_Levenshtein_substitution, 0); rb_define_method(rb_cLevenshtein, "substitution=", rb_Levenshtein_substitution_set, 1);
-    rb_define_method(rb_cLevenshtein, "deletion", rb_Levenshtein_deletion, 0); rb_define_method(rb_cLevenshtein, "deletion=", rb_Levenshtein_deletion_set, 1);
-    rb_define_method(rb_cLevenshtein, "insertion", rb_Levenshtein_insertion, 0); rb_define_method(rb_cLevenshtein, "insertion=", rb_Levenshtein_insertion_set, 1);
+    rb_define_method(rb_cLevenshtein, "pattern", rb_Levenshtein_pattern, 0);
+    rb_define_method(rb_cLevenshtein, "pattern=", rb_Levenshtein_pattern_set, 1);
+    rb_define_method(rb_cLevenshtein, "substitution", rb_Levenshtein_substitution, 0);
+    rb_define_method(rb_cLevenshtein, "substitution=", rb_Levenshtein_substitution_set, 1);
+    rb_define_method(rb_cLevenshtein, "deletion", rb_Levenshtein_deletion, 0);
+    rb_define_method(rb_cLevenshtein, "deletion=", rb_Levenshtein_deletion_set, 1);
+    rb_define_method(rb_cLevenshtein, "insertion", rb_Levenshtein_insertion, 0);
+    rb_define_method(rb_cLevenshtein, "insertion=", rb_Levenshtein_insertion_set, 1);
     rb_define_method(rb_cLevenshtein, "reset_weights", rb_Levenshtein_reset_weights, 0);
     rb_define_method(rb_cLevenshtein, "match", rb_Levenshtein_match, 1);
     rb_define_method(rb_cString, "levenshtein_match", rb_str_Levenshtein_match, 1);
@@ -619,9 +829,10 @@ void Init_amatch()
     rb_cHamming = rb_define_class_under(rb_mAmatch, "Hamming", rb_cObject);
     rb_define_alloc_func(rb_cHamming, rb_Hamming_s_allocate);
     rb_define_method(rb_cHamming, "initialize", rb_Hamming_initialize, 1);
-    rb_define_method(rb_cHamming, "pattern", rb_General_pattern, 0); rb_define_method(rb_cHamming, "pattern=", rb_General_pattern_set, 1);
+    rb_define_method(rb_cHamming, "pattern", rb_General_pattern, 0);
+    rb_define_method(rb_cHamming, "pattern=", rb_General_pattern_set, 1);
     rb_define_method(rb_cHamming, "match", rb_Hamming_match, 1);
-    rb_define_method(rb_cString, "hamming_match", rb_str_hamming, 1);
+    rb_define_method(rb_cString, "hamming_match", rb_str_hamming_match, 1);
 
     /* Pair Distance Metric */
     rb_cPairDistance = rb_define_class_under(rb_mAmatch, "PairDistance", rb_cObject);
@@ -630,23 +841,25 @@ void Init_amatch()
     rb_define_method(rb_cPairDistance, "pattern", rb_PairDistance_pattern, 0);
     rb_define_method(rb_cPairDistance, "pattern=", rb_PairDistance_pattern_set, 1);
     rb_define_method(rb_cPairDistance, "match", rb_PairDistance_match, -1);
-    rb_define_method(rb_cString, "pair_distance_match", rb_str_pair_distance, 1);
+    rb_define_method(rb_cString, "pair_distance_match", rb_str_pair_distance_match, 1);
 
     /* Longest Common Subsequence */
     rb_cLongestSubsequence = rb_define_class_under(rb_mAmatch, "LongestSubsequence", rb_cObject);
     rb_define_alloc_func(rb_cLongestSubsequence, rb_LongestSubsequence_s_allocate);
     rb_define_method(rb_cLongestSubsequence, "initialize", rb_LongestSubsequence_initialize, 1);
-    rb_define_method(rb_cLongestSubsequence, "pattern", rb_General_pattern, 0); rb_define_method(rb_cLongestSubsequence, "pattern=", rb_General_pattern_set, 1);
+    rb_define_method(rb_cLongestSubsequence, "pattern", rb_General_pattern, 0);
+    rb_define_method(rb_cLongestSubsequence, "pattern=", rb_General_pattern_set, 1);
     rb_define_method(rb_cLongestSubsequence, "match", rb_longest_subsequence_match, 1);
-    rb_define_method(rb_cString, "longest_subsequence_match", rb_str_longest_subsequence, 1);
+    rb_define_method(rb_cString, "longest_subsequence_match", rb_str_longest_subsequence_match, 1);
 
     /* Longest Common Substring */
     rb_cLongestSubstring = rb_define_class_under(rb_mAmatch, "LongestSubstring", rb_cObject);
     rb_define_alloc_func(rb_cLongestSubstring, rb_LongestSubstring_s_allocate);
     rb_define_method(rb_cLongestSubstring, "initialize", rb_LongestSubstring_initialize, 1);
-    rb_define_method(rb_cLongestSubstring, "pattern", rb_General_pattern, 0); rb_define_method(rb_cLongestSubstring, "pattern=", rb_General_pattern_set, 1);
+    rb_define_method(rb_cLongestSubstring, "pattern", rb_General_pattern, 0);
+    rb_define_method(rb_cLongestSubstring, "pattern=", rb_General_pattern_set, 1);
     rb_define_method(rb_cLongestSubstring, "match", rb_LongestSubstring_match_match, 1);
-    rb_define_method(rb_cString, "longest_substring_match", rb_str_longest_substring, 1);
+    rb_define_method(rb_cString, "longest_substring_match", rb_str_longest_substring_match, 1);
 
     id_split = rb_intern("split");
     id_to_f = rb_intern("to_f");
