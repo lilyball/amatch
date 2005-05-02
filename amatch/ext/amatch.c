@@ -196,7 +196,7 @@ DEF_PATTERN_ACCESSOR(PairDistance)
  * Levenshtein edit distances are computed here:
  */
 
-#define COMPUTE_LEVENSHTEIN_DISTANCES                                       \
+#define COMPUTE_LEVENSHTEIN_DISTANCE                                        \
     for (i = 1, c = 0, p = 1; i <= a_len; i++) {                            \
         c = i % 2;                      /* current row */                   \
         p = (i + 1) % 2;                /* previous row */                  \
@@ -235,7 +235,7 @@ static VALUE Levenshtein_match(Levenshtein *amatch, VALUE string)
     for (i = 0; i <= b_len; i++)
         v[1][i] = i * amatch->deletion;
 
-    COMPUTE_LEVENSHTEIN_DISTANCES
+    COMPUTE_LEVENSHTEIN_DISTANCE
 
     result = rb_float_new(v[p][b_len]);
     free(v[0]);
@@ -259,7 +259,7 @@ static VALUE Levenshtein_search(Levenshtein *amatch, VALUE string)
     v[1] = ALLOC_N(double, b_len + 1);
     MEMZERO(v[1], double, b_len + 1);
 
-    COMPUTE_LEVENSHTEIN_DISTANCES
+    COMPUTE_LEVENSHTEIN_DISTANCE
 
     for (i = 0, min = a_len; i <= b_len; i++) {
         if (v[p][i] < min) min = v[p][i];
@@ -315,7 +315,16 @@ static VALUE PairDistance_match(
  * Hamming distances are computed here:
  */
 
-static VALUE hamming(General *amatch, VALUE string)
+#define COMPUTE_HAMMING_DISTANCE                            \
+    for (i = 0, result = b_len - a_len; i < a_len; i++) {   \
+        if (i >= b_len) {                                   \
+            result +=  a_len - b_len;                       \
+            break;                                          \
+        }                                                   \
+        if (b_ptr[i] != a_ptr[i]) result++;                 \
+    }
+
+static VALUE hamming_match(General *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
     int a_len, b_len;
@@ -323,21 +332,51 @@ static VALUE hamming(General *amatch, VALUE string)
     
     Check_Type(string, T_STRING);
     OPTIMIZE_TIME
-    for (i = 0, result = b_len - a_len; i < a_len; i++) {
-        if (i >= b_len) {
-            result +=  a_len - b_len;
-            break;
-        }
-        if (b_ptr[i] != a_ptr[i]) result++;
-    }
+    COMPUTE_HAMMING_DISTANCE
     return INT2FIX(result);
+}
+
+static VALUE hamming_similar(General *amatch, VALUE string)
+{
+    char *a_ptr, *b_ptr;
+    int a_len, b_len;
+    int i, result;
+    
+    Check_Type(string, T_STRING);
+    OPTIMIZE_TIME
+    if (a_len == 0 && b_len == 0) return rb_float_new(1.0);
+    if (a_len == 0 || b_len == 0) return rb_float_new(0.0);
+    COMPUTE_HAMMING_DISTANCE
+    return rb_float_new(1.0 - ((double) result) / b_len);
 }
 
 /*
  * Longest Common Subsequence computation
  */
 
-static VALUE longest_subsequence(General *amatch, VALUE string)
+#define COMPUTE_LONGEST_SUBSEQUENCE                         \
+    l[0] = ALLOC_N(int, b_len + 1);                         \
+    l[1] = ALLOC_N(int, b_len + 1);                         \
+    for (i = a_len, c = 0, p = 1; i >= 0; i--) {            \
+        for (j = b_len; j >= 0; j--) {                      \
+            if (i == a_len || j == b_len) {                 \
+                l[c][j] = 0;                                \
+            } else if (a_ptr[i] == b_ptr[j]) {              \
+                l[c][j] = 1 + l[p][j + 1];                  \
+            } else {                                        \
+                int x = l[p][j], y = l[c][j + 1];           \
+                if (x > y) l[c][j] = x; else l[c][j] = y;   \
+            }                                               \
+        }                                                   \
+        p = c;                                              \
+        c = (c + 1) % 2;                                    \
+    }                                                       \
+    result = l[p][0];                                       \
+    free(l[0]);                                             \
+    free(l[1]);
+
+
+static VALUE LongestSubsequence_match(General *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
     int a_len, b_len;
@@ -347,34 +386,51 @@ static VALUE longest_subsequence(General *amatch, VALUE string)
     OPTIMIZE_TIME
 
     if (a_len == 0 || b_len == 0) return INT2FIX(0);
-
-    l[0] = ALLOC_N(int, b_len + 1); 
-    l[1] = ALLOC_N(int, b_len + 1);
-    for (i = a_len, c = 0, p = 1; i >= 0; i--) {
-        for (j = b_len; j >= 0; j--) {
-            if (i == a_len || j == b_len) {
-                l[c][j] = 0;
-            } else if (a_ptr[i] == b_ptr[j]) {
-                l[c][j] = 1 + l[p][j + 1];
-            } else {
-                int x = l[p][j], y = l[c][j + 1];
-                if (x > y) l[c][j] = x; else l[c][j] = y;
-            }
-        }
-        p = c;
-        c = (c + 1) % 2;
-    }
-    result = l[p][0];
-    free(l[0]);
-    free(l[1]);
+    COMPUTE_LONGEST_SUBSEQUENCE
     return INT2FIX(result);
+}
+
+static VALUE LongestSubsequence_similar(General *amatch, VALUE string)
+{
+    char *a_ptr, *b_ptr;
+    int a_len, b_len;
+    int result, c, p, i, j, *l[2];
+    
+    Check_Type(string, T_STRING);
+    OPTIMIZE_TIME
+
+    if (a_len == 0 && b_len == 0) return rb_float_new(1.0);
+    if (a_len == 0 || b_len == 0) return rb_float_new(0.0);
+    COMPUTE_LONGEST_SUBSEQUENCE
+    return rb_float_new(((double) result) / b_len);
 }
 
 /*
  * Longest Common Substring computation
  */
 
-static VALUE amatch_LongestSubstring(General *amatch, VALUE string)
+#define COMPUTE_LONGEST_SUBSTRING                           \
+    l[0] = ALLOC_N(int, b_len);                             \
+    MEMZERO(l[0], int, b_len);                              \
+    l[1] = ALLOC_N(int, b_len);                             \
+    MEMZERO(l[1], int, b_len);                              \
+    result = 0;                                             \
+    for (i = 0, c = 0, p = 1; i < a_len; i++) {             \
+        for (j = 0; j < b_len; j++) {                       \
+            if (a_ptr[i] == b_ptr[j]) {                     \
+                l[c][j] = j == 0 ? 1 : 1 + l[p][j - 1];     \
+                if (l[c][j] > result) result = l[c][j];     \
+            } else {                                        \
+                l[c][j] = 0;                                \
+            }                                               \
+        }                                                   \
+        p = c;                                              \
+        c = (c + 1) % 2;                                    \
+    }                                                       \
+    free(l[0]);                                             \
+    free(l[1]);
+
+static VALUE LongestSubstring_match(General *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
     int a_len, b_len;
@@ -382,29 +438,23 @@ static VALUE amatch_LongestSubstring(General *amatch, VALUE string)
     
     Check_Type(string, T_STRING);
     OPTIMIZE_TIME
-
     if (a_len == 0 || b_len == 0) return INT2FIX(0);
-
-    l[0] = ALLOC_N(int, b_len); 
-    MEMZERO(l[0], int, b_len);
-    l[1] = ALLOC_N(int, b_len);
-    MEMZERO(l[1], int, b_len);
-    result = 0;
-    for (i = 0, c = 0, p = 1; i < a_len; i++) {
-        for (j = 0; j < b_len; j++) {
-            if (a_ptr[i] == b_ptr[j]) {
-                l[c][j] = j == 0 ? 1 : 1 + l[p][j - 1];
-                if (l[c][j] > result) result = l[c][j];
-            } else {
-                l[c][j] = 0;
-            }
-        }
-        p = c;
-        c = (c + 1) % 2;
-    }
-    free(l[0]);
-    free(l[1]);
+    COMPUTE_LONGEST_SUBSTRING
     return INT2FIX(result);
+}
+
+static VALUE LongestSubstring_similar(General *amatch, VALUE string)
+{
+    char *a_ptr, *b_ptr;
+    int a_len, b_len;
+    int result, c, p, i, j, *l[2];
+    
+    Check_Type(string, T_STRING);
+    OPTIMIZE_TIME
+    if (a_len == 0 && b_len == 0) return rb_float_new(1.0);
+    if (a_len == 0 || b_len == 0) return rb_float_new(0.0);
+    COMPUTE_LONGEST_SUBSTRING
+    return rb_float_new(((double) result) / b_len);
 }
 
 /*
@@ -476,7 +526,7 @@ DEF_RB_READER(Levenshtein, rb_Levenshtein_insertion, insertion,
  * should be a Float value >= 0.0.
  */
 DEF_RB_WRITER(Levenshtein, rb_Levenshtein_substitution_set, substitution,
-    float, CAST2FLOAT, FLOAT2C, >= 0)
+    double, CAST2FLOAT, FLOAT2C, >= 0)
 
 /*
  * Document-method: deletion=
@@ -488,7 +538,7 @@ DEF_RB_WRITER(Levenshtein, rb_Levenshtein_substitution_set, substitution,
  * should be a Float value >= 0.0.
  */
 DEF_RB_WRITER(Levenshtein, rb_Levenshtein_deletion_set, deletion,
-    float, CAST2FLOAT, FLOAT2C, >= 0)
+    double, CAST2FLOAT, FLOAT2C, >= 0)
 
 /*
  * Document-method: insertion=
@@ -500,7 +550,7 @@ DEF_RB_WRITER(Levenshtein, rb_Levenshtein_deletion_set, deletion,
  * should be a Float value >= 0.0.
  */
 DEF_RB_WRITER(Levenshtein, rb_Levenshtein_insertion_set, insertion,
-    float, CAST2FLOAT, FLOAT2C, >= 0)
+    double, CAST2FLOAT, FLOAT2C, >= 0)
 
 /*
  * Resets all weights (substitution, deletion, and insertion) to 1.0.
@@ -609,10 +659,12 @@ static VALUE rb_str_Levenshtein_search(VALUE self, VALUE strings)
 /* 
  * Document-class: Amatch::PairDistance
  *
- * TODO
- *  
+ * The pair distance between two strings is based on the number of adjacent
+ * character pairs, that are contained in both strings. The advantage of
+ * considering adjacent characters, is to take account not only of the
+ * characters, but also of the character ordering in the original strings. This
+ * metric is very good in finding similarities in natural languages.
  */
-
 DEF_RB_FREE(PairDistance, PairDistance)
 
 /*
@@ -630,11 +682,20 @@ static VALUE rb_PairDistance_initialize(VALUE self, VALUE pattern)
 DEF_CONSTRUCTOR(PairDistance, PairDistance)
 
 /*
- * call-seq: match(strings) -> results
+ * call-seq: match(strings, regexp = /\s+/) -> results
  * 
- * Uses this Amatch::PairDistance instance to match  Levenshtein#pattern against
- * <code>strings</code>. <code>strings</code> has to be either a String or an
- * Array of Strings. The returned <code>results</code> are either a Float or an
+ * Uses this Amatch::PairDistance instance to match  PairDistance#pattern against
+ * <code>strings</code>. It returns the pair distance measure, that is a
+ * returned value of 1.0 is an exact match, partial matches are lower
+ * values, while 0.0 means no match at all.
+ *
+ * <code>strings</code> has to be either a String or an
+ * Array of Strings. The argument <code>regexp</code> is used to split the
+ * pattern and strings into tokens first. It defaults to /\s+/. If the
+ * splitting should be omitted, call the method with nil as <code>regexp</code>
+ * explicitly.
+ *
+ * The returned <code>results</code> are either a Float or an
  * Array of Floats respectively.
  */
 static VALUE rb_PairDistance_match(int argc, VALUE *argv, VALUE self)
@@ -670,7 +731,13 @@ static VALUE rb_PairDistance_match(int argc, VALUE *argv, VALUE self)
 }
 
 /*
- * TODO
+ * call-seq: hamming_match(strings) -> results
+ *
+ * If called on a String, this string is used as a PairDistance#pattern to
+ * match against <code>strings</code>. It returns the pair distance measure.
+ * <code>strings</code> has to be either a String or an Array of Strings. The
+ * returned <code>results</code> are either a Float or an Array of Floats
+ * respectively.
  */
 static VALUE rb_str_pair_distance_match(VALUE self, VALUE strings)
 {
@@ -708,7 +775,7 @@ DEF_CONSTRUCTOR(Hamming, General)
 /*
  * call-seq: match(strings) -> results
  * 
- * Uses this Amatch::Hamming instance to match  Levenshtein#pattern against
+ * Uses this Amatch::Hamming instance to match  Hamming#pattern against
  * <code>strings</code>, that is compute the hamming distance between
  * <code>pattern</code> and <code>strings</code>. <code>strings</code> has to
  * be either a String or an Array of Strings. The returned <code>results</code>
@@ -717,16 +784,33 @@ DEF_CONSTRUCTOR(Hamming, General)
 static VALUE rb_Hamming_match(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(General)
-    return General_iterate_strings(amatch, strings, hamming);
+    return General_iterate_strings(amatch, strings, hamming_match);
 }
 
 /*
- * TODO
+ * call-seq: hamming_match(strings) -> results
+ *
+ * If called on a String, this string is used as a Hamming#pattern to match
+ * against <code>strings</code>. It returns the number of different characters,
+ * that is  the Hamming distance. <code>strings</code> has to be either a
+ * String or an Array of Strings. The returned <code>results</code> are either
+ * a Float or an Array of Floats respectively.
  */
 static VALUE rb_str_hamming_match(VALUE self, VALUE strings)
 {
     VALUE amatch = rb_Hamming_new(rb_cLevenshtein, self);
     return rb_Hamming_match(amatch, strings);
+}
+
+/*
+ * call-seq: similar(strings) -> results
+ * XXX
+ * 
+ */
+static VALUE rb_Hamming_similar(VALUE self, VALUE strings)
+{                                                                            
+    GET_STRUCT(General)
+    return General_iterate_strings(amatch, strings, hamming_similar);
 }
 
 /* 
@@ -760,26 +844,44 @@ DEF_CONSTRUCTOR(LongestSubsequence, General)
 /*
  * call-seq: match(strings) -> results
  * 
- * Uses this Amatch::LongestSubsequence instance to match  Levenshtein#pattern
- * against <code>strings</code>, that is compute the length of the longest
- * common subsequence. <code>strings</code> has to be either a String or an
- * Array of Strings. The returned <code>results</code> are either a Fixnum or
- * an Array of Fixnums respectively.
+ * Uses this Amatch::LongestSubsequence instance to match
+ * LongestSubsequence#pattern against <code>strings</code>, that is compute the
+ * length of the longest common subsequence. <code>strings</code> has to be
+ * either a String or an Array of Strings. The returned <code>results</code>
+ * are either a Fixnum or an Array of Fixnums respectively.
  */
-static VALUE rb_longest_subsequence_match(VALUE self, VALUE strings)
+static VALUE rb_LongestSubsequence_match(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(General)
-    return General_iterate_strings(amatch, strings, longest_subsequence);
+    return General_iterate_strings(amatch, strings, LongestSubsequence_match);
 }
 
 /*
- * TODO
+ * call-seq: longest_subsequence_match(strings) -> results
+ *
+ * If called on a String, this string is used as a LongestSubsequence#pattern
+ * to match against <code>strings</code>. It returns the length of the longest
+ * common subsequence. <code>strings</code> has to be either a String or an
+ * Array of Strings. The returned <code>results</code> are either a Float or an
+ * Array of Floats respectively.
  */
 static VALUE rb_str_longest_subsequence_match(VALUE self, VALUE strings)
 {                                                                            
     VALUE amatch = rb_LongestSubsequence_new(rb_cLevenshtein, self);
-    return rb_longest_subsequence_match(amatch, strings);
+    return rb_LongestSubsequence_match(amatch, strings);
 }
+
+/*
+ * call-seq: similar(strings) -> results
+ * 
+ * TODO
+ */
+static VALUE rb_LongestSubsequence_similar(VALUE self, VALUE strings)
+{                                                                            
+    GET_STRUCT(General)
+    return General_iterate_strings(amatch, strings, LongestSubsequence_similar);
+}
+
 
 /* 
  * Document-class: Amatch::LongestSubstring
@@ -814,24 +916,42 @@ DEF_CONSTRUCTOR(LongestSubstring, General)
 /*
  * call-seq: match(strings) -> results
  * 
- * Uses this Amatch::LongestSubstring instance to match  Levenshtein#pattern
- * against <code>strings</code>. <code>strings</code> has to be either a String
- * or an Array of Strings. The returned <code>results</code> are either a
- * Fixnum or an Array of Fixnums respectively.
+ * Uses this Amatch::LongestSubstring instance to match
+ * LongestSubstring#pattern against <code>strings</code>. <code>strings</code>
+ * has to be either a String or an Array of Strings. The returned
+ * <code>results</code> are either a Fixnum or an Array of Fixnums
+ * respectively.
  */
-static VALUE rb_LongestSubstring_match_match(VALUE self, VALUE strings)
+static VALUE rb_LongestSubstring_match(VALUE self, VALUE strings)
 {
     GET_STRUCT(General)
-    return General_iterate_strings(amatch, strings, amatch_LongestSubstring);
+    return General_iterate_strings(amatch, strings, LongestSubstring_match);
 }
 
 /*
- * TODO
+ * call-seq: longest_substring_match(strings) -> results
+ *
+ * If called on a String, this string is used as a LongestSubstring#pattern
+ * to match against <code>strings</code>. It returns the length of the longest
+ * common substring. <code>strings</code> has to be either a String or an
+ * Array of Strings. The returned <code>results</code> are either a Float or an
+ * Array of Floats respectively.
  */
 static VALUE rb_str_longest_substring_match(VALUE self, VALUE strings)
 {                                                                            
     VALUE amatch = rb_LongestSubsequence_new(rb_cLevenshtein, self);
-    return rb_LongestSubstring_match_match(amatch, strings);
+    return rb_LongestSubstring_match(amatch, strings);
+}
+
+/*
+ * call-seq: similar(strings) -> results
+ * 
+ * TODO
+ */
+static VALUE rb_LongestSubstring_similar(VALUE self, VALUE strings)
+{
+    GET_STRUCT(General)
+    return General_iterate_strings(amatch, strings, LongestSubstring_similar);
 }
 
 /*
@@ -926,6 +1046,7 @@ void Init_amatch()
     rb_define_method(rb_cHamming, "pattern=", rb_General_pattern_set, 1);
     rb_define_method(rb_cHamming, "match", rb_Hamming_match, 1);
     rb_define_method(rb_cString, "hamming_match", rb_str_hamming_match, 1);
+    rb_define_method(rb_cHamming, "similar", rb_Hamming_similar, 1);
 
     /* Pair Distance Metric */
     rb_cPairDistance = rb_define_class_under(rb_mAmatch, "PairDistance", rb_cObject);
@@ -934,7 +1055,9 @@ void Init_amatch()
     rb_define_method(rb_cPairDistance, "pattern", rb_PairDistance_pattern, 0);
     rb_define_method(rb_cPairDistance, "pattern=", rb_PairDistance_pattern_set, 1);
     rb_define_method(rb_cPairDistance, "match", rb_PairDistance_match, -1);
+    rb_define_alias(rb_cPairDistance, "similar", "match");
     rb_define_method(rb_cString, "pair_distance_match", rb_str_pair_distance_match, 1);
+    rb_define_alias(rb_cString, "pair_distance_similar", "pair_distance_match");
 
     /* Longest Common Subsequence */
     rb_cLongestSubsequence = rb_define_class_under(rb_mAmatch, "LongestSubsequence", rb_cObject);
@@ -942,8 +1065,9 @@ void Init_amatch()
     rb_define_method(rb_cLongestSubsequence, "initialize", rb_LongestSubsequence_initialize, 1);
     rb_define_method(rb_cLongestSubsequence, "pattern", rb_General_pattern, 0);
     rb_define_method(rb_cLongestSubsequence, "pattern=", rb_General_pattern_set, 1);
-    rb_define_method(rb_cLongestSubsequence, "match", rb_longest_subsequence_match, 1);
+    rb_define_method(rb_cLongestSubsequence, "match", rb_LongestSubsequence_match, 1);
     rb_define_method(rb_cString, "longest_subsequence_match", rb_str_longest_subsequence_match, 1);
+    rb_define_method(rb_cLongestSubsequence, "similar", rb_LongestSubsequence_similar, 1);
 
     /* Longest Common Substring */
     rb_cLongestSubstring = rb_define_class_under(rb_mAmatch, "LongestSubstring", rb_cObject);
@@ -951,8 +1075,9 @@ void Init_amatch()
     rb_define_method(rb_cLongestSubstring, "initialize", rb_LongestSubstring_initialize, 1);
     rb_define_method(rb_cLongestSubstring, "pattern", rb_General_pattern, 0);
     rb_define_method(rb_cLongestSubstring, "pattern=", rb_General_pattern_set, 1);
-    rb_define_method(rb_cLongestSubstring, "match", rb_LongestSubstring_match_match, 1);
+    rb_define_method(rb_cLongestSubstring, "match", rb_LongestSubstring_match, 1);
     rb_define_method(rb_cString, "longest_substring_match", rb_str_longest_substring_match, 1);
+    rb_define_method(rb_cLongestSubstring, "similar", rb_LongestSubstring_similar, 1);
 
     id_split = rb_intern("split");
     id_to_f = rb_intern("to_f");
