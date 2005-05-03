@@ -18,8 +18,8 @@
  */
 
 
-static VALUE rb_mAmatch, rb_cLevenshtein, rb_cHamming, rb_cPairDistance,
-             rb_cLongestSubsequence, rb_cLongestSubstring;
+static VALUE rb_mAmatch, rb_cLevenshtein, rb_cSellers, rb_cHamming,
+             rb_cPairDistance, rb_cLongestSubsequence, rb_cLongestSubstring;
 
 static ID id_split, id_to_f;
 
@@ -164,23 +164,23 @@ DEF_ALLOCATOR(General)
 DEF_PATTERN_ACCESSOR(General)
 DEF_ITERATE_STRINGS(General)
 
-typedef struct LevenshteinStruct {
+typedef struct SellersStruct {
     char        *pattern;
     char        pattern_len;
     double      substitution;
     double      deletion;
     double      insertion;
-} Levenshtein;
+} Sellers;
 
-DEF_ALLOCATOR(Levenshtein)
-DEF_PATTERN_ACCESSOR(Levenshtein)
-DEF_ITERATE_STRINGS(Levenshtein)
+DEF_ALLOCATOR(Sellers)
+DEF_PATTERN_ACCESSOR(Sellers)
+DEF_ITERATE_STRINGS(Sellers)
 
-static void Levenshtein_reset_weights(Levenshtein *self)
+static void Sellers_reset_weights(Sellers *self)
 {
-    self->substitution = 1;
-    self->deletion     = 1;
-    self->insertion    = 1;
+    self->substitution = 1.0;
+    self->deletion     = 1.0;
+    self->insertion    = 1.0;
 }
 
 typedef struct PairDistanceStruct {
@@ -197,6 +197,116 @@ DEF_PATTERN_ACCESSOR(PairDistance)
  */
 
 #define COMPUTE_LEVENSHTEIN_DISTANCE                                        \
+    for (i = 1, c = 0, p = 1; i <= a_len; i++) {                            \
+        c = i % 2;                      /* current row */                   \
+        p = (i + 1) % 2;                /* previous row */                  \
+        v[c][0] = i;                    /* first column */                  \
+        for (j = 1; j <= b_len; j++) {                                      \
+            /* Bellman's principle of optimality: */                        \
+            weight = v[p][j - 1] + (a_ptr[i - 1] == b_ptr[j - 1] ? 0 : 1);  \
+            if (weight > v[p][j] + 1) {                                     \
+                 weight = v[p][j] + 1;                                      \
+            }                                                               \
+            if (weight > v[c][j - 1] + 1) {                                 \
+                weight = v[c][j - 1] + 1;                                   \
+            }                                                               \
+            v[c][j] = weight;                                               \
+        }                                                                   \
+        p = c;                                                              \
+        c = (c + 1) % 2;                                                    \
+    }
+
+static VALUE Levenshtein_match(General *amatch, VALUE string)
+{
+    VALUE result;
+    char *a_ptr, *b_ptr;
+    int a_len, b_len;
+    double *v[2], weight;
+    int  i, j, c, p;
+
+    Check_Type(string, T_STRING);
+    DONT_OPTIMIZE
+
+    v[0] = ALLOC_N(double, b_len + 1);
+    v[1] = ALLOC_N(double, b_len + 1);
+    for (i = 0; i <= b_len; i++) {
+        v[0][i] = i;
+        v[1][i] = i;
+    }
+
+    COMPUTE_LEVENSHTEIN_DISTANCE
+
+    result = rb_float_new(v[p][b_len]);
+    free(v[0]);
+    free(v[1]);
+    return result;
+}
+
+static VALUE Levenshtein_similar(General *amatch, VALUE string)
+{
+    VALUE result;
+    char *a_ptr, *b_ptr;
+    int a_len, b_len;
+    double *v[2], weight;
+    int  i, j, c, p;
+
+    Check_Type(string, T_STRING);
+    DONT_OPTIMIZE
+    if (a_len == 0 && b_len == 0) return rb_float_new(1.0);
+    if (a_len == 0 || b_len == 0) return rb_float_new(0.0);
+    v[0] = ALLOC_N(double, b_len + 1);
+    v[1] = ALLOC_N(double, b_len + 1);
+    for (i = 0; i <= b_len; i++) {
+        v[0][i] = i;
+        v[1][i] = i;
+    }
+
+    COMPUTE_LEVENSHTEIN_DISTANCE
+
+    if (b_len > a_len) {
+        result = rb_float_new(1.0 - v[p][b_len] / b_len);
+    } else {
+        result = rb_float_new(1.0 - v[p][b_len] / a_len);
+    }
+    free(v[0]);
+    free(v[1]);
+    return result;
+}
+
+static VALUE Levenshtein_search(General *amatch, VALUE string)
+{
+    VALUE result;
+    char *a_ptr, *b_ptr;
+    int a_len, b_len;
+    double *v[2], weight, min;
+    int  i, j, c, p;
+
+    Check_Type(string, T_STRING);
+    DONT_OPTIMIZE
+
+    v[0] = ALLOC_N(double, b_len + 1);
+    v[1] = ALLOC_N(double, b_len + 1);
+    MEMZERO(v[0], double, b_len + 1);
+    MEMZERO(v[1], double, b_len + 1);
+
+    COMPUTE_LEVENSHTEIN_DISTANCE
+
+    for (i = 0, min = a_len; i <= b_len; i++) {
+        if (v[p][i] < min) min = v[p][i];
+    }
+    result = rb_float_new(min);
+    free(v[0]);
+    free(v[1]);
+    
+    return result;
+}
+
+
+/*
+ * Sellers edit distances are computed here:
+ */
+
+#define COMPUTE_SELLERS_DISTANCE                                            \
     for (i = 1, c = 0, p = 1; i <= a_len; i++) {                            \
         c = i % 2;                      /* current row */                   \
         p = (i + 1) % 2;                /* previous row */                  \
@@ -217,25 +327,25 @@ DEF_PATTERN_ACCESSOR(PairDistance)
         c = (c + 1) % 2;                                                    \
     }
 
-static VALUE Levenshtein_match(Levenshtein *amatch, VALUE string)
+static VALUE Sellers_match(Sellers *amatch, VALUE string)
 {
     VALUE result;
     char *a_ptr, *b_ptr;
     int a_len, b_len;
-    double *v[2] = { NULL, NULL }, weight;
+    double *v[2], weight;
     int  i, j, c, p;
 
     Check_Type(string, T_STRING);
     DONT_OPTIMIZE
 
     v[0] = ALLOC_N(double, b_len + 1);
-    for (i = 0; i <= b_len; i++)
-        v[0][i] = i * amatch->deletion;
     v[1] = ALLOC_N(double, b_len + 1);
-    for (i = 0; i <= b_len; i++)
+    for (i = 0; i <= b_len; i++) {
+        v[0][i] = i * amatch->deletion;
         v[1][i] = i * amatch->deletion;
+    }
 
-    COMPUTE_LEVENSHTEIN_DISTANCE
+    COMPUTE_SELLERS_DISTANCE
 
     result = rb_float_new(v[p][b_len]);
     free(v[0]);
@@ -243,23 +353,54 @@ static VALUE Levenshtein_match(Levenshtein *amatch, VALUE string)
     return result;
 }
 
-static VALUE Levenshtein_search(Levenshtein *amatch, VALUE string)
+static VALUE Sellers_similar(Sellers *amatch, VALUE string)
 {
     VALUE result;
     char *a_ptr, *b_ptr;
     int a_len, b_len;
-    double *v[2] = { NULL, NULL }, weight, min;
+    double *v[2], weight;
+    int  i, j, c, p;
+
+    Check_Type(string, T_STRING);
+    DONT_OPTIMIZE
+    if (a_len == 0 && b_len == 0) return rb_float_new(1.0);
+    if (a_len == 0 || b_len == 0) return rb_float_new(0.0);
+    v[0] = ALLOC_N(double, b_len + 1);
+    v[1] = ALLOC_N(double, b_len + 1);
+    for (i = 0; i <= b_len; i++) {
+        v[0][i] = i * amatch->deletion;
+        v[1][i] = i * amatch->deletion;
+    }
+
+    COMPUTE_SELLERS_DISTANCE
+
+    if (b_len > a_len) {
+        result = rb_float_new(1.0 - v[p][b_len] / b_len);
+    } else {
+        result = rb_float_new(1.0 - v[p][b_len] / a_len);
+    }
+    free(v[0]);
+    free(v[1]);
+    return result;
+}
+
+static VALUE Sellers_search(Sellers *amatch, VALUE string)
+{
+    VALUE result;
+    char *a_ptr, *b_ptr;
+    int a_len, b_len;
+    double *v[2], weight, min;
     int  i, j, c, p;
 
     Check_Type(string, T_STRING);
     DONT_OPTIMIZE
 
     v[0] = ALLOC_N(double, b_len + 1);
-    MEMZERO(v[0], double, b_len + 1);
     v[1] = ALLOC_N(double, b_len + 1);
+    MEMZERO(v[0], double, b_len + 1);
     MEMZERO(v[1], double, b_len + 1);
 
-    COMPUTE_LEVENSHTEIN_DISTANCE
+    COMPUTE_SELLERS_DISTANCE
 
     for (i = 0, min = a_len; i <= b_len; i++) {
         if (v[p][i] < min) min = v[p][i];
@@ -324,7 +465,7 @@ static VALUE PairDistance_match(
         if (b_ptr[i] != a_ptr[i]) result++;                 \
     }
 
-static VALUE hamming_match(General *amatch, VALUE string)
+static VALUE Hamming_match(General *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
     int a_len, b_len;
@@ -336,7 +477,7 @@ static VALUE hamming_match(General *amatch, VALUE string)
     return INT2FIX(result);
 }
 
-static VALUE hamming_similar(General *amatch, VALUE string)
+static VALUE Hamming_similar(General *amatch, VALUE string)
 {
     char *a_ptr, *b_ptr;
     int a_len, b_len;
@@ -464,7 +605,88 @@ static VALUE LongestSubstring_similar(General *amatch, VALUE string)
 /* 
  * Document-class: Amatch::Levenshtein
  *
- * The Levenshtein edit distance is defined as the minimal costs involved
+ *  This class computes the Levenshtein distance between two strings.
+ *
+ *  The Levenshtein distance between two strings is the number of characters,
+ *  that are different. Thus a hamming distance of 0 means an exact
+ *  match, a hamming distance of 1 means one character is different, and so
+ *  on.
+ */
+
+DEF_RB_FREE(Levenshtein, General)
+
+/*
+ * call-seq: new(pattern)
+ *
+ * Creates a new Amatch::Levenshtein instance from <code>pattern</code>.
+ */
+static VALUE rb_Levenshtein_initialize(VALUE self, VALUE pattern)
+{
+    GET_STRUCT(General)
+    General_pattern_set(amatch, pattern);
+    return self;
+}
+
+DEF_CONSTRUCTOR(Levenshtein, General)
+
+/*
+ * call-seq: match(strings) -> results
+ * 
+ * TODO
+ */
+static VALUE rb_Levenshtein_match(VALUE self, VALUE strings)
+{                                                                            
+    GET_STRUCT(General)
+    return General_iterate_strings(amatch, strings, Levenshtein_match);
+}
+
+/*
+ * call-seq: levenshtein_match(strings) -> results
+ *
+ */
+static VALUE rb_str_levenshtein_match(VALUE self, VALUE strings)
+{
+    VALUE amatch = rb_Levenshtein_new(rb_cSellers, self);
+    return rb_Levenshtein_match(amatch, strings);
+}
+
+/*
+ * call-seq: similar(strings) -> results
+ * 
+ * TODO
+ */
+static VALUE rb_Levenshtein_similar(VALUE self, VALUE strings)
+{                                                                            
+    GET_STRUCT(General)
+    return General_iterate_strings(amatch, strings, Levenshtein_similar);
+}
+
+/*
+ * call-seq: search(strings) -> results
+ * 
+ * TODO
+ */
+static VALUE rb_Levenshtein_search(VALUE self, VALUE strings)
+{                                                                            
+    GET_STRUCT(General)
+    return General_iterate_strings(amatch, strings, Levenshtein_search);
+}
+
+/*
+ * call-seq: levenshtein_search(strings) -> results
+ *
+ * TODO
+ */
+static VALUE rb_str_levenshtein_search(VALUE self, VALUE strings)
+{
+    VALUE amatch = rb_Levenshtein_new(rb_cSellers, self);
+    return rb_Levenshtein_search(amatch, strings);
+}
+
+/* 
+ * Document-class: Amatch::Sellers
+ *
+ * The Sellers edit distance is defined as the minimal costs involved
  * to transform one string into another by using three elementary
  * operations: deletion, insertion and substitution of a character. To
  * transform "water" into "wine", for instance, you have to substitute "a"
@@ -476,12 +698,12 @@ static VALUE LongestSubstring_similar(General *amatch, VALUE string)
  * smaller edit distances than strings that differ a lot.
  *
  * You can als use different weights for every operation to prefer special
- * operations over others. This extension of the Levenshtein edit distance
+ * operations over others. This extension of the Sellers edit distance
  * is also known under the names: Needleman-Wunsch distance or Sellers
  * algorithm.
  */
 
-DEF_RB_FREE(Levenshtein, Levenshtein)
+DEF_RB_FREE(Sellers, Sellers)
 
 /*
  * Document-method: substitution
@@ -489,9 +711,9 @@ DEF_RB_FREE(Levenshtein, Levenshtein)
  * call-seq: substitution -> weight
  *
  * Returns the weight of the substitution operation, that is used to compute
- * the Levenshtein distance.
+ * the Sellers distance.
  */
-DEF_RB_READER(Levenshtein, rb_Levenshtein_substitution, substitution,
+DEF_RB_READER(Sellers, rb_Sellers_substitution, substitution,
     rb_float_new)
 
 /*
@@ -500,9 +722,9 @@ DEF_RB_READER(Levenshtein, rb_Levenshtein_substitution, substitution,
  * call-seq: deletion -> weight
  *
  * Returns the weight of the deletion operation, that is used to compute
- * the Levenshtein distance.
+ * the Sellers distance.
  */
-DEF_RB_READER(Levenshtein, rb_Levenshtein_deletion, deletion,
+DEF_RB_READER(Sellers, rb_Sellers_deletion, deletion,
     rb_float_new)
 
 /*
@@ -511,9 +733,9 @@ DEF_RB_READER(Levenshtein, rb_Levenshtein_deletion, deletion,
  * call-seq: insertion -> weight
  *
  * Returns the weight of the insertion operation, that is used to compute
- * the Levenshtein distance.
+ * the Sellers distance.
  */
-DEF_RB_READER(Levenshtein, rb_Levenshtein_insertion, insertion,
+DEF_RB_READER(Sellers, rb_Sellers_insertion, insertion,
     rb_float_new)
 
 /*
@@ -522,10 +744,10 @@ DEF_RB_READER(Levenshtein, rb_Levenshtein_insertion, insertion,
  * call-seq: substitution=(weight)
  *
  * Sets the weight of the substitution operation, that is used to compute
- * the Levenshtein distance, to <code>weight</code>. The <code>weight</code>
+ * the Sellers distance, to <code>weight</code>. The <code>weight</code>
  * should be a Float value >= 0.0.
  */
-DEF_RB_WRITER(Levenshtein, rb_Levenshtein_substitution_set, substitution,
+DEF_RB_WRITER(Sellers, rb_Sellers_substitution_set, substitution,
     double, CAST2FLOAT, FLOAT2C, >= 0)
 
 /*
@@ -534,10 +756,10 @@ DEF_RB_WRITER(Levenshtein, rb_Levenshtein_substitution_set, substitution,
  * call-seq: deletion=(weight)
  *
  * Sets the weight of the deletion operation, that is used to compute
- * the Levenshtein distance, to <code>weight</code>. The <code>weight</code>
+ * the Sellers distance, to <code>weight</code>. The <code>weight</code>
  * should be a Float value >= 0.0.
  */
-DEF_RB_WRITER(Levenshtein, rb_Levenshtein_deletion_set, deletion,
+DEF_RB_WRITER(Sellers, rb_Sellers_deletion_set, deletion,
     double, CAST2FLOAT, FLOAT2C, >= 0)
 
 /*
@@ -546,44 +768,44 @@ DEF_RB_WRITER(Levenshtein, rb_Levenshtein_deletion_set, deletion,
  * call-seq: insertion=(weight)
  *
  * Sets the weight of the insertion operation, that is used to compute
- * the Levenshtein distance, to <code>weight</code>. The <code>weight</code>
+ * the Sellers distance, to <code>weight</code>. The <code>weight</code>
  * should be a Float value >= 0.0.
  */
-DEF_RB_WRITER(Levenshtein, rb_Levenshtein_insertion_set, insertion,
+DEF_RB_WRITER(Sellers, rb_Sellers_insertion_set, insertion,
     double, CAST2FLOAT, FLOAT2C, >= 0)
 
 /*
  * Resets all weights (substitution, deletion, and insertion) to 1.0.
  */
-static VALUE rb_Levenshtein_reset_weights(VALUE self)
+static VALUE rb_Sellers_reset_weights(VALUE self)
 {
-    GET_STRUCT(Levenshtein)
-    Levenshtein_reset_weights(amatch);
+    GET_STRUCT(Sellers)
+    Sellers_reset_weights(amatch);
     return self;
 }
 
 /*
  * call-seq: new(pattern)
  *
- * Creates a new Amatch::Levenshtein instance from <code>pattern</code>,
+ * Creates a new Amatch::Sellers instance from <code>pattern</code>,
  * with all weights initially set to 1.0.
  */
-static VALUE rb_Levenshtein_initialize(VALUE self, VALUE pattern)
+static VALUE rb_Sellers_initialize(VALUE self, VALUE pattern)
 {
-    GET_STRUCT(Levenshtein)
-    Levenshtein_pattern_set(amatch, pattern);
-    Levenshtein_reset_weights(amatch);
+    GET_STRUCT(Sellers)
+    Sellers_pattern_set(amatch, pattern);
+    Sellers_reset_weights(amatch);
     return self;
 }
 
-DEF_CONSTRUCTOR(Levenshtein, Levenshtein)
+DEF_CONSTRUCTOR(Sellers, Sellers)
 
 /*
  * Document-method: pattern
  *
  * call-seq: pattern -> pattern string
  *
- * Returns the current pattern string of this Amatch::Levenshtein instance.
+ * Returns the current pattern string of this Amatch::Sellers instance.
  */
 
 /*
@@ -591,69 +813,80 @@ DEF_CONSTRUCTOR(Levenshtein, Levenshtein)
  *
  * call-seq: pattern=(pattern)
  * 
- * Sets the current pattern string of this Amatch::Levenshtein instance to
+ * Sets the current pattern string of this Amatch::Sellers instance to
  * <code>pattern</code>.
  */
 
 /*
  * call-seq: match(strings) -> results
  * 
- * Uses this Amatch::Levenshtein instance to match Levenshtein#pattern against
+ * Uses this Amatch::Sellers instance to match Sellers#pattern against
  * <code>strings</code>. It returns the number of weighted character
- * operations, usually the Levenshtein distance. <code>strings</code> has to be
+ * operations, usually the Sellers distance. <code>strings</code> has to be
  * either a String or an Array of Strings. The returned <code>results</code>
  * are either a Float or an Array of Floats respectively.
  */
-static VALUE rb_Levenshtein_match(VALUE self, VALUE strings)
+static VALUE rb_Sellers_match(VALUE self, VALUE strings)
 {                                                                            
-    GET_STRUCT(Levenshtein)
-    return Levenshtein_iterate_strings(amatch, strings, Levenshtein_match);
+    GET_STRUCT(Sellers)
+    return Sellers_iterate_strings(amatch, strings, Sellers_match);
 }
 
 /*
- * call-seq: levenshtein_match(strings) -> results
+ * call-seq: sellers_match(strings) -> results
  *
- * If called on a String, this string is used as a Levenshtein#pattern to match
+ * If called on a String, this string is used as a Sellers#pattern to match
  * against <code>strings</code>. It returns the number of character operations,
- * that is  the Levenshtein distance. <code>strings</code> has to be either a
+ * that is  the Sellers distance. <code>strings</code> has to be either a
  * String or an Array of Strings. The returned <code>results</code> are either
  * a Float or an Array of Floats respectively.
  */
-static VALUE rb_str_Levenshtein_match(VALUE self, VALUE strings)
+static VALUE rb_str_Sellers_match(VALUE self, VALUE strings)
 {
-    VALUE amatch = rb_Levenshtein_new(rb_cLevenshtein, self);
-    return rb_Levenshtein_match(amatch, strings);
+    VALUE amatch = rb_Sellers_new(rb_cSellers, self);
+    return rb_Sellers_match(amatch, strings);
+}
+
+/*
+ * call-seq: similar(strings) -> results
+ * 
+ * TODO
+ */
+static VALUE rb_Sellers_similar(VALUE self, VALUE strings)
+{                                                                            
+    GET_STRUCT(Sellers)
+    return Sellers_iterate_strings(amatch, strings, Sellers_similar);
 }
 
 /*
  * call-seq: search(strings) -> results
  *
- * searches Levenshtein#pattern in <code>strings</code> and returns the edit
+ * searches Sellers#pattern in <code>strings</code> and returns the edit
  * distance (the sum of weighted character operations) as a Float value, by
  * greedy trimming prefixes or postfixes of the match. <code>strings</code> has
  * to be either a String or an Array of Strings. The returned
  * <code>results</code> are either a Float or an Array of Floats respectively.
  */
-static VALUE rb_Levenshtein_search(VALUE self, VALUE strings)
+static VALUE rb_Sellers_search(VALUE self, VALUE strings)
 {                                                                            
-    GET_STRUCT(Levenshtein)
-    return Levenshtein_iterate_strings(amatch, strings, Levenshtein_search);
+    GET_STRUCT(Sellers)
+    return Sellers_iterate_strings(amatch, strings, Sellers_search);
 }
 
 /*
- * call-seq: levenshtein_search(strings) -> results
+ * call-seq: sellers_search(strings) -> results
  *
- * If called on a String, this string is used as a Levenshtein#pattern to
+ * If called on a String, this string is used as a Sellers#pattern to
  * search in <code>strings</code>. It returns the number of character
- * operations, that is  the Levenshtein distance, minus prefixes and postfixes
+ * operations, that is  the Sellers distance, minus prefixes and postfixes
  * of the found pattern. <code>strings</code> has to be either a String or an
  * Array of Strings. The returned <code>results</code> are either a Float or an
  * Array of Floats respectively.
  */
-static VALUE rb_str_Levenshtein_search(VALUE self, VALUE strings)
+static VALUE rb_str_Sellers_search(VALUE self, VALUE strings)
 {
-    VALUE amatch = rb_Levenshtein_new(rb_cLevenshtein, self);
-    return rb_Levenshtein_search(amatch, strings);
+    VALUE amatch = rb_Sellers_new(rb_cSellers, self);
+    return rb_Sellers_search(amatch, strings);
 }
 
 /* 
@@ -741,7 +974,7 @@ static VALUE rb_PairDistance_match(int argc, VALUE *argv, VALUE self)
  */
 static VALUE rb_str_pair_distance_match(VALUE self, VALUE strings)
 {
-    VALUE amatch = rb_PairDistance_new(rb_cLevenshtein, self);
+    VALUE amatch = rb_PairDistance_new(rb_cSellers, self);
     return rb_PairDistance_match(1, &strings, amatch);
 }
 
@@ -784,7 +1017,7 @@ DEF_CONSTRUCTOR(Hamming, General)
 static VALUE rb_Hamming_match(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(General)
-    return General_iterate_strings(amatch, strings, hamming_match);
+    return General_iterate_strings(amatch, strings, Hamming_match);
 }
 
 /*
@@ -798,7 +1031,7 @@ static VALUE rb_Hamming_match(VALUE self, VALUE strings)
  */
 static VALUE rb_str_hamming_match(VALUE self, VALUE strings)
 {
-    VALUE amatch = rb_Hamming_new(rb_cLevenshtein, self);
+    VALUE amatch = rb_Hamming_new(rb_cHamming, self);
     return rb_Hamming_match(amatch, strings);
 }
 
@@ -810,7 +1043,7 @@ static VALUE rb_str_hamming_match(VALUE self, VALUE strings)
 static VALUE rb_Hamming_similar(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(General)
-    return General_iterate_strings(amatch, strings, hamming_similar);
+    return General_iterate_strings(amatch, strings, Hamming_similar);
 }
 
 /* 
@@ -867,7 +1100,7 @@ static VALUE rb_LongestSubsequence_match(VALUE self, VALUE strings)
  */
 static VALUE rb_str_longest_subsequence_match(VALUE self, VALUE strings)
 {                                                                            
-    VALUE amatch = rb_LongestSubsequence_new(rb_cLevenshtein, self);
+    VALUE amatch = rb_LongestSubsequence_new(rb_cSellers, self);
     return rb_LongestSubsequence_match(amatch, strings);
 }
 
@@ -939,7 +1172,7 @@ static VALUE rb_LongestSubstring_match(VALUE self, VALUE strings)
  */
 static VALUE rb_str_longest_substring_match(VALUE self, VALUE strings)
 {                                                                            
-    VALUE amatch = rb_LongestSubsequence_new(rb_cLevenshtein, self);
+    VALUE amatch = rb_LongestSubsequence_new(rb_cSellers, self);
     return rb_LongestSubstring_match(amatch, strings);
 }
 
@@ -961,7 +1194,7 @@ static VALUE rb_LongestSubstring_similar(VALUE self, VALUE strings)
  *
  * This is a collection of classes that can be used for Approximate
  * matching, searching, and comparing of Strings. They implement algorithms
- * that compute the Levenshtein edit distance, the Hamming distance, the
+ * that compute the Sellers edit distance, the Hamming distance, the
  * longest common subsequence length, the longest common substring length, and
  * the pair distance metric.
  *
@@ -989,12 +1222,12 @@ static VALUE rb_LongestSubstring_similar(VALUE self, VALUE strings)
  *  require 'amatch'
  *  include Amatch
  *
- *  m = Levenshtein.new("pattern")
+ *  m = Sellers.new("pattern")
  *  m.match("pattren")                              # => 2.0
  *  m.match(["pattren","parent"])                   # => [2.0, 4.0]
  *  m.search("abcpattrendef")                       # => 2.0
- *  "pattern".levenshtein_match("pattren")          # => 2.0
- *  "pattern".levenshtein_search("abcpattrendef")   # => 2.0
+ *  "pattern".sellers_match("pattren")          # => 2.0
+ *  "pattern".sellers_search("abcpattrendef")   # => 2.0
  *
  *  m = Hamming.new("pattern")
  *  m.match("pattren")                  # => 2
@@ -1024,19 +1257,32 @@ void Init_amatch()
     rb_cLevenshtein = rb_define_class_under(rb_mAmatch, "Levenshtein", rb_cObject);
     rb_define_alloc_func(rb_cLevenshtein, rb_Levenshtein_s_allocate);
     rb_define_method(rb_cLevenshtein, "initialize", rb_Levenshtein_initialize, 1);
-    rb_define_method(rb_cLevenshtein, "pattern", rb_Levenshtein_pattern, 0);
-    rb_define_method(rb_cLevenshtein, "pattern=", rb_Levenshtein_pattern_set, 1);
-    rb_define_method(rb_cLevenshtein, "substitution", rb_Levenshtein_substitution, 0);
-    rb_define_method(rb_cLevenshtein, "substitution=", rb_Levenshtein_substitution_set, 1);
-    rb_define_method(rb_cLevenshtein, "deletion", rb_Levenshtein_deletion, 0);
-    rb_define_method(rb_cLevenshtein, "deletion=", rb_Levenshtein_deletion_set, 1);
-    rb_define_method(rb_cLevenshtein, "insertion", rb_Levenshtein_insertion, 0);
-    rb_define_method(rb_cLevenshtein, "insertion=", rb_Levenshtein_insertion_set, 1);
-    rb_define_method(rb_cLevenshtein, "reset_weights", rb_Levenshtein_reset_weights, 0);
+    rb_define_method(rb_cLevenshtein, "pattern", rb_General_pattern, 0);
+    rb_define_method(rb_cLevenshtein, "pattern=", rb_General_pattern_set, 1);
     rb_define_method(rb_cLevenshtein, "match", rb_Levenshtein_match, 1);
-    rb_define_method(rb_cString, "levenshtein_match", rb_str_Levenshtein_match, 1);
+    rb_define_method(rb_cString, "levenshtein_match", rb_str_levenshtein_match, 1);
+    rb_define_method(rb_cLevenshtein, "similar", rb_Levenshtein_similar, 1);
     rb_define_method(rb_cLevenshtein, "search", rb_Levenshtein_search, 1);
-    rb_define_method(rb_cString, "levenshtein_search", rb_str_Levenshtein_search, 1);
+    rb_define_method(rb_cString, "levenshtein_search", rb_str_levenshtein_search, 1);
+
+    /* Sellers */
+    rb_cSellers = rb_define_class_under(rb_mAmatch, "Sellers", rb_cObject);
+    rb_define_alloc_func(rb_cSellers, rb_Sellers_s_allocate);
+    rb_define_method(rb_cSellers, "initialize", rb_Sellers_initialize, 1);
+    rb_define_method(rb_cSellers, "pattern", rb_Sellers_pattern, 0);
+    rb_define_method(rb_cSellers, "pattern=", rb_Sellers_pattern_set, 1);
+    rb_define_method(rb_cSellers, "substitution", rb_Sellers_substitution, 0);
+    rb_define_method(rb_cSellers, "substitution=", rb_Sellers_substitution_set, 1);
+    rb_define_method(rb_cSellers, "deletion", rb_Sellers_deletion, 0);
+    rb_define_method(rb_cSellers, "deletion=", rb_Sellers_deletion_set, 1);
+    rb_define_method(rb_cSellers, "insertion", rb_Sellers_insertion, 0);
+    rb_define_method(rb_cSellers, "insertion=", rb_Sellers_insertion_set, 1);
+    rb_define_method(rb_cSellers, "reset_weights", rb_Sellers_reset_weights, 0);
+    rb_define_method(rb_cSellers, "match", rb_Sellers_match, 1);
+    rb_define_method(rb_cString, "sellers_match", rb_str_Sellers_match, 1);
+    rb_define_method(rb_cSellers, "similar", rb_Sellers_similar, 1);
+    rb_define_method(rb_cSellers, "search", rb_Sellers_search, 1);
+    rb_define_method(rb_cString, "sellers_search", rb_str_Sellers_search, 1);
 
     /* Hamming */
     rb_cHamming = rb_define_class_under(rb_mAmatch, "Hamming", rb_cObject);
