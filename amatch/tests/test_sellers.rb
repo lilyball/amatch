@@ -1,6 +1,6 @@
 require 'test/unit'
 require 'amatch'
-require 'test_levensthein'
+require 'test_levenshtein'
 
 class TC_Sellers < TC_Levenshtein
   include Amatch
