@@ -48,6 +48,7 @@ class TC_Hamming < Test::Unit::TestCase
     assert_in_delta 0.75, @small.similar('tesa'), D
     assert_in_delta 0.25, @small.similar('taex'), D
     assert_in_delta 0.1, @small.similar('aaatestbbb'), D
+    assert_in_delta 0.8, @small.pattern.hamming_similar('testa'), D
   end
 end
   # vim: set et sw=2 ts=2:

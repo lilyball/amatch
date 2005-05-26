@@ -667,16 +667,6 @@ static VALUE rb_Levenshtein_match(VALUE self, VALUE strings)
 }
 
 /*
- * call-seq: levenshtein_match(strings) -> results
- *
- */
-static VALUE rb_str_levenshtein_match(VALUE self, VALUE strings)
-{
-    VALUE amatch = rb_Levenshtein_new(rb_cSellers, self);
-    return rb_Levenshtein_match(amatch, strings);
-}
-
-/*
  * call-seq: similar(strings) -> results
  * 
  * TODO
@@ -685,6 +675,17 @@ static VALUE rb_Levenshtein_similar(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(General)
     return General_iterate_strings(amatch, strings, Levenshtein_similar);
+}
+
+/*
+ * call-seq: levenshtein_similar(strings) -> results
+ * 
+ * TODO
+ */
+static VALUE rb_str_levenshtein_similar(VALUE self, VALUE strings)
+{
+    VALUE amatch = rb_Levenshtein_new(rb_cSellers, self);
+    return rb_Levenshtein_similar(amatch, strings);
 }
 
 /*
@@ -700,17 +701,6 @@ static VALUE rb_Levenshtein_search(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(General)
     return General_iterate_strings(amatch, strings, Levenshtein_search);
-}
-
-/*
- * call-seq: levenshtein_search(strings) -> results
- *
- * TODO
- */
-static VALUE rb_str_levenshtein_search(VALUE self, VALUE strings)
-{
-    VALUE amatch = rb_Levenshtein_new(rb_cSellers, self);
-    return rb_Levenshtein_search(amatch, strings);
 }
 
 /* 
@@ -853,15 +843,16 @@ static VALUE rb_Sellers_match(VALUE self, VALUE strings)
 }
 
 /*
- * call-seq: sellers_match(strings) -> results
+ * call-seq: sellers_similar(strings) -> results
  *
  * If called on a String, this string is used as a Sellers#pattern to match
- * against <code>strings</code>. It returns the number of character operations,
- * that is  the Sellers distance. <code>strings</code> has to be either a
- * String or an Array of Strings. The returned <code>results</code> are either
- * a Float or an Array of Floats respectively.
+ * against <code>strings</code>. It returns a Sellers metric number between
+ * 0.0 for very unsimilar strings and 1.0 for an exact match.
+ * <code>strings</code> has to be either a String or an Array of Strings. The
+ * returned <code>results</code> are either a Float or an Array of Floats
+ * respectively.
  */
-static VALUE rb_str_sellers_match(VALUE self, VALUE strings)
+static VALUE rb_str_sellers_similar(VALUE self, VALUE strings)
 {
     VALUE amatch = rb_Sellers_new(rb_cSellers, self);
     return rb_Sellers_match(amatch, strings);
@@ -870,7 +861,7 @@ static VALUE rb_str_sellers_match(VALUE self, VALUE strings)
 /*
  * call-seq: similar(strings) -> results
  * 
- * XXX
+ * TODO
  */
 static VALUE rb_Sellers_similar(VALUE self, VALUE strings)
 {                                                                            
@@ -891,22 +882,6 @@ static VALUE rb_Sellers_search(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(Sellers)
     return Sellers_iterate_strings(amatch, strings, Sellers_search);
-}
-
-/*
- * call-seq: sellers_search(strings) -> results
- *
- * If called on a String, this string is used as a Sellers#pattern to
- * search in <code>strings</code>. It returns the number of character
- * operations, that is  the Sellers distance, minus prefixes and postfixes
- * of the found pattern. <code>strings</code> has to be either a String or an
- * Array of Strings. The returned <code>results</code> are either a Float or an
- * Array of Floats respectively.
- */
-static VALUE rb_str_sellers_search(VALUE self, VALUE strings)
-{
-    VALUE amatch = rb_Sellers_new(rb_cSellers, self);
-    return rb_Sellers_search(amatch, strings);
 }
 
 /* 
@@ -984,15 +959,11 @@ static VALUE rb_PairDistance_match(int argc, VALUE *argv, VALUE self)
 }
 
 /*
- * call-seq: hamming_match(strings) -> results
+ * call-seq: pair_distance_similar(strings) -> results
  *
- * If called on a String, this string is used as a PairDistance#pattern to
- * match against <code>strings</code>. It returns the pair distance measure.
- * <code>strings</code> has to be either a String or an Array of Strings. The
- * returned <code>results</code> are either a Float or an Array of Floats
- * respectively.
+ * TODO
  */
-static VALUE rb_str_pair_distance_match(VALUE self, VALUE strings)
+static VALUE rb_str_pair_distance_similar(VALUE self, VALUE strings)
 {
     VALUE amatch = rb_PairDistance_new(rb_cSellers, self);
     return rb_PairDistance_match(1, &strings, amatch);
@@ -1003,10 +974,11 @@ static VALUE rb_str_pair_distance_match(VALUE self, VALUE strings)
  *
  *  This class computes the Hamming distance between two strings.
  *
- *  The Hamming distance between two strings is the number of characters,
- *  that are different. Thus a hamming distance of 0 means an exact
- *  match, a hamming distance of 1 means one character is different, and so
- *  on.
+ *  The Hamming distance between two strings is the number of characters, that
+ *  are different. Thus a hamming distance of 0 means an exact
+ *  match, a hamming distance of 1 means one character is different, and so on.
+ *  If one string is longer than the other string, the missing characters are
+ *  counted as different characters.
  */
 
 DEF_RB_FREE(Hamming, General)
@@ -1041,30 +1013,36 @@ static VALUE rb_Hamming_match(VALUE self, VALUE strings)
 }
 
 /*
- * call-seq: hamming_match(strings) -> results
- *
- * If called on a String, this string is used as a Hamming#pattern to match
- * against <code>strings</code>. It returns the number of different characters,
- * that is  the Hamming distance. <code>strings</code> has to be either a
- * String or an Array of Strings. The returned <code>results</code> are either
- * a Float or an Array of Floats respectively.
- */
-static VALUE rb_str_hamming_match(VALUE self, VALUE strings)
-{
-    VALUE amatch = rb_Hamming_new(rb_cHamming, self);
-    return rb_Hamming_match(amatch, strings);
-}
-
-/*
  * call-seq: similar(strings) -> results
- * XXX
- * 
+ *
+ * Uses this Amatch::Hamming instance to match  Hamming#pattern against
+ * <code>strings</code>, and compute a Hamming metric number
+ * between 0.0 for very unsimilar strings and 1.0 for an exact match.
+ * <code>strings</code> has to be either a String or an Array of Strings. The
+ * returned <code>results</code> are either a Fixnum or an Array of Fixnums
+ * respectively.
  */
 static VALUE rb_Hamming_similar(VALUE self, VALUE strings)
 {                                                                            
     GET_STRUCT(General)
     return General_iterate_strings(amatch, strings, Hamming_similar);
 }
+
+/*
+ * call-seq: hamming_similar(strings) -> results
+ *
+ * If called on a String, this string is used as a Hamming#pattern to match
+ * against <code>strings</code>. It returns a Hamming metric number between
+ * 0.0 for very unsimilar strings and 1.0 for an exact match. <code>strings</code>
+ * has to be either a String or an Array of Strings. The returned
+ * <code>results</code> are either a Float or an Array of Floats respectively.
+ */
+static VALUE rb_str_hamming_similar(VALUE self, VALUE strings)
+{
+    VALUE amatch = rb_Hamming_new(rb_cHamming, self);
+    return rb_Hamming_similar(amatch, strings);
+}
+
 
 /* 
  * Document-class: Amatch::LongestSubsequence
@@ -1110,21 +1088,6 @@ static VALUE rb_LongestSubsequence_match(VALUE self, VALUE strings)
 }
 
 /*
- * call-seq: longest_subsequence_match(strings) -> results
- *
- * If called on a String, this string is used as a LongestSubsequence#pattern
- * to match against <code>strings</code>. It returns the length of the longest
- * common subsequence. <code>strings</code> has to be either a String or an
- * Array of Strings. The returned <code>results</code> are either a Float or an
- * Array of Floats respectively.
- */
-static VALUE rb_str_longest_subsequence_match(VALUE self, VALUE strings)
-{                                                                            
-    VALUE amatch = rb_LongestSubsequence_new(rb_cSellers, self);
-    return rb_LongestSubsequence_match(amatch, strings);
-}
-
-/*
  * call-seq: similar(strings) -> results
  * 
  * TODO
@@ -1135,6 +1098,16 @@ static VALUE rb_LongestSubsequence_similar(VALUE self, VALUE strings)
     return General_iterate_strings(amatch, strings, LongestSubsequence_similar);
 }
 
+/*
+ * call-seq: longest_subsequence_similar(strings) -> results
+ *
+ * TODO
+ */
+static VALUE rb_str_longest_subsequence_similar(VALUE self, VALUE strings)
+{                                                                            
+    VALUE amatch = rb_LongestSubsequence_new(rb_cSellers, self);
+    return rb_LongestSubsequence_similar(amatch, strings);
+}
 
 /* 
  * Document-class: Amatch::LongestSubstring
@@ -1182,21 +1155,6 @@ static VALUE rb_LongestSubstring_match(VALUE self, VALUE strings)
 }
 
 /*
- * call-seq: longest_substring_match(strings) -> results
- *
- * If called on a String, this string is used as a LongestSubstring#pattern
- * to match against <code>strings</code>. It returns the length of the longest
- * common substring. <code>strings</code> has to be either a String or an
- * Array of Strings. The returned <code>results</code> are either a Float or an
- * Array of Floats respectively.
- */
-static VALUE rb_str_longest_substring_match(VALUE self, VALUE strings)
-{                                                                            
-    VALUE amatch = rb_LongestSubsequence_new(rb_cSellers, self);
-    return rb_LongestSubstring_match(amatch, strings);
-}
-
-/*
  * call-seq: similar(strings) -> results
  * 
  * TODO
@@ -1204,7 +1162,18 @@ static VALUE rb_str_longest_substring_match(VALUE self, VALUE strings)
 static VALUE rb_LongestSubstring_similar(VALUE self, VALUE strings)
 {
     GET_STRUCT(General)
-        return General_iterate_strings(amatch, strings, LongestSubstring_similar);
+    return General_iterate_strings(amatch, strings, LongestSubstring_similar);
+}
+
+/*
+ * call-seq: longest_substring_similar(strings) -> results
+ *
+ * TODO
+ */
+static VALUE rb_str_longest_substring_similar(VALUE self, VALUE strings)
+{                                                                            
+    VALUE amatch = rb_LongestSubsequence_new(rb_cSellers, self);
+    return rb_LongestSubstring_similar(amatch, strings);
 }
 
 /*
@@ -1280,10 +1249,9 @@ void Init_amatch()
     rb_define_method(rb_cLevenshtein, "pattern", rb_General_pattern, 0);
     rb_define_method(rb_cLevenshtein, "pattern=", rb_General_pattern_set, 1);
     rb_define_method(rb_cLevenshtein, "match", rb_Levenshtein_match, 1);
-    rb_define_method(rb_cString, "levenshtein_match", rb_str_levenshtein_match, 1);
-    rb_define_method(rb_cLevenshtein, "similar", rb_Levenshtein_similar, 1);
     rb_define_method(rb_cLevenshtein, "search", rb_Levenshtein_search, 1);
-    rb_define_method(rb_cString, "levenshtein_search", rb_str_levenshtein_search, 1);
+    rb_define_method(rb_cLevenshtein, "similar", rb_Levenshtein_similar, 1);
+    rb_define_method(rb_cString, "levenshtein_similar", rb_str_levenshtein_similar, 1);
 
     /* Sellers */
     rb_cSellers = rb_define_class_under(rb_mAmatch, "Sellers", rb_cObject);
@@ -1299,10 +1267,9 @@ void Init_amatch()
     rb_define_method(rb_cSellers, "insertion=", rb_Sellers_insertion_set, 1);
     rb_define_method(rb_cSellers, "reset_weights", rb_Sellers_reset_weights, 0);
     rb_define_method(rb_cSellers, "match", rb_Sellers_match, 1);
-    rb_define_method(rb_cString, "sellers_match", rb_str_sellers_match, 1);
-    rb_define_method(rb_cSellers, "similar", rb_Sellers_similar, 1);
     rb_define_method(rb_cSellers, "search", rb_Sellers_search, 1);
-    rb_define_method(rb_cString, "sellers_search", rb_str_sellers_search, 1);
+    rb_define_method(rb_cSellers, "similar", rb_Sellers_similar, 1);
+    rb_define_method(rb_cString, "sellers_similar", rb_str_sellers_similar, 1);
 
     /* Hamming */
     rb_cHamming = rb_define_class_under(rb_mAmatch, "Hamming", rb_cObject);
@@ -1311,8 +1278,8 @@ void Init_amatch()
     rb_define_method(rb_cHamming, "pattern", rb_General_pattern, 0);
     rb_define_method(rb_cHamming, "pattern=", rb_General_pattern_set, 1);
     rb_define_method(rb_cHamming, "match", rb_Hamming_match, 1);
-    rb_define_method(rb_cString, "hamming_match", rb_str_hamming_match, 1);
     rb_define_method(rb_cHamming, "similar", rb_Hamming_similar, 1);
+    rb_define_method(rb_cString, "hamming_similar", rb_str_hamming_similar, 1);
 
     /* Pair Distance Metric */
     rb_cPairDistance = rb_define_class_under(rb_mAmatch, "PairDistance", rb_cObject);
@@ -1322,8 +1289,7 @@ void Init_amatch()
     rb_define_method(rb_cPairDistance, "pattern=", rb_PairDistance_pattern_set, 1);
     rb_define_method(rb_cPairDistance, "match", rb_PairDistance_match, -1);
     rb_define_alias(rb_cPairDistance, "similar", "match");
-    rb_define_method(rb_cString, "pair_distance_match", rb_str_pair_distance_match, 1);
-    rb_define_alias(rb_cString, "pair_distance_similar", "pair_distance_match");
+    rb_define_method(rb_cString, "pair_distance_similar", rb_str_pair_distance_similar, 1);
 
     /* Longest Common Subsequence */
     rb_cLongestSubsequence = rb_define_class_under(rb_mAmatch, "LongestSubsequence", rb_cObject);
@@ -1332,8 +1298,8 @@ void Init_amatch()
     rb_define_method(rb_cLongestSubsequence, "pattern", rb_General_pattern, 0);
     rb_define_method(rb_cLongestSubsequence, "pattern=", rb_General_pattern_set, 1);
     rb_define_method(rb_cLongestSubsequence, "match", rb_LongestSubsequence_match, 1);
-    rb_define_method(rb_cString, "longest_subsequence_match", rb_str_longest_subsequence_match, 1);
     rb_define_method(rb_cLongestSubsequence, "similar", rb_LongestSubsequence_similar, 1);
+    rb_define_method(rb_cString, "longest_subsequence_similar", rb_str_longest_subsequence_similar, 1);
 
     /* Longest Common Substring */
     rb_cLongestSubstring = rb_define_class_under(rb_mAmatch, "LongestSubstring", rb_cObject);
@@ -1342,8 +1308,8 @@ void Init_amatch()
     rb_define_method(rb_cLongestSubstring, "pattern", rb_General_pattern, 0);
     rb_define_method(rb_cLongestSubstring, "pattern=", rb_General_pattern_set, 1);
     rb_define_method(rb_cLongestSubstring, "match", rb_LongestSubstring_match, 1);
-    rb_define_method(rb_cString, "longest_substring_match", rb_str_longest_substring_match, 1);
     rb_define_method(rb_cLongestSubstring, "similar", rb_LongestSubstring_similar, 1);
+    rb_define_method(rb_cString, "longest_substring_similar", rb_str_longest_substring_similar, 1);
 
     id_split = rb_intern("split");
     id_to_f = rb_intern("to_f");
