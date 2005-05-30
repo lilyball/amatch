@@ -17,6 +17,8 @@ class TC_PairDistance < Test::Unit::TestCase
   def test_empty
     assert_in_delta 1, @empty.match(''), D
     assert_in_delta 0, @empty.match('not empty'), D
+    assert_in_delta 1, @empty.similar(''), D
+    assert_in_delta 0, @empty.similar('not empty'), D
   end
 
   def test_countries
@@ -73,6 +75,7 @@ class TC_PairDistance < Test::Unit::TestCase
     assert_in_delta 1,          @csv.match('foo,bar,baz', nil), D
     assert_in_delta 0.9,        @csv.match('foo,baz,bar', nil), D
     assert_in_delta 0.9,        @csv.match('foo,baz,bar'), D
+    assert_in_delta 0.9,        @csv.similar('foo,baz,bar'), D
   end
 end
   # vim: set et sw=2 ts=2:

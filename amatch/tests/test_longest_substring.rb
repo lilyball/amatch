@@ -34,5 +34,24 @@ class TC_LongestSubstring < Test::Unit::TestCase
     assert_in_delta 1, @small.match('aaasbbb'), D
     assert_in_delta 4, @small.match('aaatestbbb'), D
   end
+
+  def test_similar
+    assert_in_delta 1, @empty.similar(''), D
+    assert_in_delta 0, @empty.similar('not empty'), D
+    assert_in_delta 0.0, @small.similar(''), D
+    assert_in_delta 1.0, @small.similar('test'), D
+    assert_in_delta 0.8, @small.similar('testa'), D
+    assert_in_delta 0.8, @small.similar('atest'), D
+    assert_in_delta 0.4, @small.similar('teast'), D
+    assert_in_delta 0.75, @small.similar('est'), D
+    assert_in_delta 0.75, @small.similar('tes'), D
+    assert_in_delta 0.5, @small.similar('tst'), D
+    assert_in_delta 0.75, @small.similar('best'), D
+    assert_in_delta 0.5, @small.similar('tost'), D
+    assert_in_delta 0.75, @small.similar('tesa'), D
+    assert_in_delta 0.25, @small.similar('taex'), D
+    assert_in_delta 0.4, @small.similar('aaatestbbb'), D
+    assert_in_delta 0.75, @small.pattern.levenshtein_similar('est'), D
+  end
 end
   # vim: set et sw=2 ts=2:

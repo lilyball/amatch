@@ -5,58 +5,70 @@ class TC_Levenshtein < Test::Unit::TestCase
   include Amatch
 
   D = 0.000001
-
+  
   def setup
     @empty = Levenshtein.new('')
     @simple = Levenshtein.new('test')
   end
 
   def test_match
-    assert_in_delta 4,     @simple.match(''), D
-    assert_in_delta 0,     @simple.match('test'), D
-    assert_in_delta 0,     @simple.match('test'), D
-    assert_in_delta 1,     @simple.match('testa'), D
-    assert_in_delta 1,     @simple.match('atest'), D
-    assert_in_delta 1,     @simple.match('teast'), D
-    assert_in_delta 1,     @simple.match('est'), D
-    assert_in_delta 1,     @simple.match('tes'), D
-    assert_in_delta 1,     @simple.match('tst'), D
-    assert_in_delta 1,     @simple.match('best'), D
-    assert_in_delta 1,     @simple.match('tost'), D
-    assert_in_delta 1,     @simple.match('tesa'), D
-    assert_in_delta 3,     @simple.match('taex'), D
-    assert_in_delta 6,     @simple.match('aaatestbbb'), D
+    assert_equal 4,     @simple.match('')
+    assert_equal 0,     @simple.match('test')
+    assert_equal 0,     @simple.match('test')
+    assert_equal 1,     @simple.match('testa')
+    assert_equal 1,     @simple.match('atest')
+    assert_equal 1,     @simple.match('teast')
+    assert_equal 1,     @simple.match('est')
+    assert_equal 1,     @simple.match('tes')
+    assert_equal 1,     @simple.match('tst')
+    assert_equal 1,     @simple.match('best')
+    assert_equal 1,     @simple.match('tost')
+    assert_equal 1,     @simple.match('tesa')
+    assert_equal 3,     @simple.match('taex')
+    assert_equal 6,     @simple.match('aaatestbbb')
   end
 
   def test_search
-    assert_in_delta 4,     @simple.search(''), D
-    assert_in_delta 0,     @empty.search(''), D
-    assert_in_delta 0,     @empty.search('test'), D
-    assert_in_delta 0,     @simple.search('aaatestbbb'), D
-    assert_in_delta 3,     @simple.search('aaataexbbb'), D
-    assert_in_delta 4,     @simple.search('aaaaaaaaa'), D
-  end
-
-  def assert_in_delta_array(left, right, delta = D)
-    left.size.times do |i|
-      assert_in_delta left[i], right[i], delta
-    end
+    assert_equal 4,     @simple.search('')
+    assert_equal 0,     @empty.search('')
+    assert_equal 0,     @empty.search('test')
+    assert_equal 0,     @simple.search('aaatestbbb')
+    assert_equal 3,     @simple.search('aaataexbbb')
+    assert_equal 4,     @simple.search('aaaaaaaaa')
   end
 
   def test_array_result
-  return
-    assert_in_delta_array [2, 0],    @simple.match(["tets", "test"])
-    assert_in_delta_array [1, 0],    @simple.search(["tetsaaa", "testaaa"])
+    assert_equal [2, 0],    @simple.match(["tets", "test"])
+    assert_equal [1, 0],    @simple.search(["tetsaaa", "testaaa"])
     assert_raises(TypeError) { @simple.match([:foo, "bar"]) }
   end
 
   def test_pattern_setting
     assert_raises(TypeError) { @simple.pattern = :something }
-    assert_in_delta 0, @simple.match('test'), D
+    assert_equal 0, @simple.match('test')
     @simple.pattern = ''
-    assert_in_delta 4, @simple.match('test'), D
+    assert_equal 4, @simple.match('test')
     @simple.pattern = 'test'
-    assert_in_delta 0, @simple.match('test'), D
+    assert_equal 0, @simple.match('test')
+  end
+
+  def test_similar
+    assert_in_delta 1, @empty.similar(''), D
+    assert_in_delta 0, @empty.similar('not empty'), D
+    assert_in_delta 0.0, @simple.similar(''), D
+    assert_in_delta 1.0, @simple.similar('test'), D
+    assert_in_delta 0.8, @simple.similar('testa'), D
+    assert_in_delta 0.8, @simple.similar('atest'), D
+    assert_in_delta 0.8, @simple.similar('teast'), D
+    assert_in_delta 0.75, @simple.similar('est'), D
+    assert_in_delta 0.75, @simple.similar('tes'), D
+    assert_in_delta 0.75, @simple.similar('tst'), D
+    assert_in_delta 0.75, @simple.similar('best'), D
+    assert_in_delta 0.75, @simple.similar('tost'), D
+    assert_in_delta 0.75, @simple.similar('tesa'), D
+    assert_in_delta 0.25, @simple.similar('taex'), D
+    assert_in_delta 0.4, @simple.similar('aaatestbbb'), D
+    assert_in_delta 0.75, @simple.pattern.levenshtein_similar('est'), D
   end
 end
   # vim: set et sw=2 ts=2:

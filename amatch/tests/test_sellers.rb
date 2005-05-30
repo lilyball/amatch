@@ -46,11 +46,49 @@ class TC_Sellers < TC_Levenshtein
     assert_in_delta 1, @simple.deletion, D
   end
 
-
   def test_weight_exceptions
     assert_raises(TypeError) { @simple.substitution = :something }
     assert_raises(TypeError) { @simple.insertion = :something }
     assert_raises(TypeError) { @simple.deletion = :something }
+  end
+
+  def test_similar
+    assert_in_delta 0.0, @simple.similar(''), D
+    assert_in_delta 1.0, @simple.similar('test'), D
+    assert_in_delta 0.8, @simple.similar('testa'), D
+    assert_in_delta 0.8, @simple.similar('atest'), D
+    assert_in_delta 0.8, @simple.similar('teast'), D
+    assert_in_delta 0.75, @simple.similar('est'), D
+    assert_in_delta 0.75, @simple.similar('tes'), D
+    assert_in_delta 0.75, @simple.similar('tst'), D
+    assert_in_delta 0.75, @simple.similar('best'), D
+    assert_in_delta 0.75, @simple.similar('tost'), D
+    assert_in_delta 0.75, @simple.similar('tesa'), D
+    assert_in_delta 0.25, @simple.similar('taex'), D
+    assert_in_delta 0.4, @simple.similar('aaatestbbb'), D
+    assert_in_delta 0.75, @simple.pattern.levenshtein_similar('est'), D
+  end
+
+  def test_similar
+    assert_in_delta 1, @empty.similar(''), D
+    assert_in_delta 0, @empty.similar('not empty'), D
+    assert_in_delta 0.0, @simple.similar(''), D
+    assert_in_delta 1.0, @simple.similar('test'), D
+    assert_in_delta 0.8, @simple.similar('testa'), D
+    assert_in_delta 0.8, @simple.similar('atest'), D
+    assert_in_delta 0.8, @simple.similar('teast'), D
+    assert_in_delta 0.75, @simple.similar('est'), D
+    assert_in_delta 0.75, @simple.similar('tes'), D
+    assert_in_delta 0.75, @simple.similar('tst'), D
+    assert_in_delta 0.75, @simple.similar('best'), D
+    assert_in_delta 0.75, @simple.similar('tost'), D
+    assert_in_delta 0.75, @simple.similar('tesa'), D
+    assert_in_delta 0.25, @simple.similar('taex'), D
+    assert_in_delta 0.4, @simple.similar('aaatestbbb'), D
+    assert_in_delta 0.75, @simple.pattern.levenshtein_similar('est'), D
+    @simple.insertion = 1
+    @simple.substitution = @simple.deletion = 2
+    assert_in_delta 0.875, @simple.similar('tst'), D
   end
 end
   # vim: set et sw=2 ts=2:

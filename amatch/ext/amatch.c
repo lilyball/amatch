@@ -889,9 +889,13 @@ static VALUE rb_Sellers_search(VALUE self, VALUE strings)
  * Document-class: Amatch::PairDistance
  *
  * The pair distance between two strings is based on the number of adjacent
- * character pairs, that are contained in both strings. The advantage of
- * considering adjacent characters, is to take account not only of the
- * characters, but also of the character ordering in the original strings.
+ * character pairs, that are contained in both strings. The similiarity
+ * metric of two strings s1 and s2 is
+ *   2*|union(pairs(s1), pairs(s2))| / |pairs(s1)| + |pairs(s2)|
+ * If it is 1.0 the two strings are an exact match, if less than 1.0 they
+ * are more dissimilar. The advantage of considering adjacent characters, is to
+ * take account not only of the characters, but also of the character ordering
+ * in the original strings.
  * 
  * This metric is very capable to find similarities in natural languages.
  * It is explained in more detail in Simon White's article "How to Strike a
