@@ -654,8 +654,8 @@ DEF_CONSTRUCTOR(Levenshtein, General)
 /*
  * call-seq: match(strings) -> results
  * 
- * Uses this Amatch::Levenshtein instance to match Levenshtein#pattern against
- * <code>strings</code>. It returns the number operations, the Sellers
+ * Uses this Amatch::Levenshtein instance to match Amatch::Levenshtein#pattern
+ * against <code>strings</code>. It returns the number operations, the Sellers
  * distance. <code>strings</code> has to be either a String or an Array of
  * Strings. The returned <code>results</code> are either a Float or an Array of
  * Floats respectively.
@@ -669,7 +669,12 @@ static VALUE rb_Levenshtein_match(VALUE self, VALUE strings)
 /*
  * call-seq: similar(strings) -> results
  * 
- * TODO
+ * Uses this Amatch::Levenshtein instance to match  Amatch::Levenshtein#pattern
+ * against <code>strings</code>, and compute a Levenshtein distance metric
+ * number between 0.0 for very unsimilar strings and 1.0 for an exact match.
+ * <code>strings</code> has to be either a String or an Array of Strings. The
+ * returned <code>results</code> are either a Fixnum or an Array of Fixnums
+ * respectively.
  */
 static VALUE rb_Levenshtein_similar(VALUE self, VALUE strings)
 {                                                                            
@@ -680,7 +685,12 @@ static VALUE rb_Levenshtein_similar(VALUE self, VALUE strings)
 /*
  * call-seq: levenshtein_similar(strings) -> results
  * 
- * TODO
+ * If called on a String, this string is used as a Amatch::Levenshtein#pattern
+ * to match against <code>strings</code>. It returns a Levenshtein distance
+ * metric number between 0.0 for very unsimilar strings and 1.0 for an exact
+ * match. <code>strings</code> has to be either a String or an Array of
+ * Strings. The returned <code>results</code> are either a Float or an Array of
+ * Floats respectively.
  */
 static VALUE rb_str_levenshtein_similar(VALUE self, VALUE strings)
 {
@@ -691,9 +701,9 @@ static VALUE rb_str_levenshtein_similar(VALUE self, VALUE strings)
 /*
  * call-seq: search(strings) -> results
  * 
- * searches Levenshtein#pattern in <code>strings</code> and returns the edit
- * distance (the sum of character operations) as a Fixnum value, by
- * greedy trimming prefixes or postfixes of the match. <code>strings</code> has
+ * searches Amatch::Levenshtein#pattern in <code>strings</code> and returns the
+ * edit distance (the sum of character operations) as a Fixnum value, by greedy
+ * trimming prefixes or postfixes of the match. <code>strings</code> has
  * to be either a String or an Array of Strings. The returned
  * <code>results</code> are either a Float or an Array of Floats respectively.
  */
@@ -831,10 +841,11 @@ DEF_CONSTRUCTOR(Sellers, Sellers)
  * call-seq: match(strings) -> results
  * 
  * Uses this Amatch::Sellers instance to match Sellers#pattern against
- * <code>strings</code>. It returns the number of weighted character
- * operations, the Sellers distance. <code>strings</code> has to be
- * either a String or an Array of Strings. The returned <code>results</code>
- * are either a Float or an Array of Floats respectively.
+ * <code>strings</code>, while taking into account the given weights. It
+ * returns the number of weighted character operations, the Sellers distance.
+ * <code>strings</code> has to be either a String or an Array of Strings. The
+ * returned <code>results</code> are either a Float or an Array of Floats
+ * respectively.
  */
 static VALUE rb_Sellers_match(VALUE self, VALUE strings)
 {                                                                            
@@ -843,25 +854,15 @@ static VALUE rb_Sellers_match(VALUE self, VALUE strings)
 }
 
 /*
- * call-seq: sellers_similar(strings) -> results
- *
- * If called on a String, this string is used as a Sellers#pattern to match
- * against <code>strings</code>. It returns a Sellers metric number between
- * 0.0 for very unsimilar strings and 1.0 for an exact match.
- * <code>strings</code> has to be either a String or an Array of Strings. The
- * returned <code>results</code> are either a Float or an Array of Floats
- * respectively.
- */
-static VALUE rb_str_sellers_similar(VALUE self, VALUE strings)
-{
-    VALUE amatch = rb_Sellers_new(rb_cSellers, self);
-    return rb_Sellers_match(amatch, strings);
-}
-
-/*
  * call-seq: similar(strings) -> results
  * 
- * TODO
+ * Uses this Amatch::Sellers instance to match Amatch::Sellers#pattern
+ * against <code>strings</code> (taking into account the given weights), and
+ * compute a Sellers distance metric number between 0.0 for very unsimilar
+ * strings and 1.0 for an exact match. <code>strings</code> has to be either a
+ * String or an Array of Strings. The returned <code>results</code> are either
+ * a Fixnum or an Array of Fixnums
+ * respectively.
  */
 static VALUE rb_Sellers_similar(VALUE self, VALUE strings)
 {                                                                            
@@ -961,7 +962,12 @@ static VALUE rb_PairDistance_match(int argc, VALUE *argv, VALUE self)
 /*
  * call-seq: pair_distance_similar(strings) -> results
  *
- * TODO
+ * If called on a String, this string is used as a Amatch::PairDistance#pattern
+ * to match against <code>strings</code> using /\s+/ as the tokenizing regular
+ * expression. It returns a pair distance metric number between 0.0 for very
+ * unsimilar strings and 1.0 for an exact match. <code>strings</code> has to be
+ * either a String or an Array of Strings. The returned <code>results</code>
+ * are either a Float or an Array of Floats respectively.
  */
 static VALUE rb_str_pair_distance_similar(VALUE self, VALUE strings)
 {
@@ -1000,7 +1006,7 @@ DEF_CONSTRUCTOR(Hamming, General)
 /*
  * call-seq: match(strings) -> results
  * 
- * Uses this Amatch::Hamming instance to match  Hamming#pattern against
+ * Uses this Amatch::Hamming instance to match Amatch::Hamming#pattern against
  * <code>strings</code>, that is compute the hamming distance between
  * <code>pattern</code> and <code>strings</code>. <code>strings</code> has to
  * be either a String or an Array of Strings. The returned <code>results</code>
@@ -1015,9 +1021,9 @@ static VALUE rb_Hamming_match(VALUE self, VALUE strings)
 /*
  * call-seq: similar(strings) -> results
  *
- * Uses this Amatch::Hamming instance to match  Hamming#pattern against
- * <code>strings</code>, and compute a Hamming metric number
- * between 0.0 for very unsimilar strings and 1.0 for an exact match.
+ * Uses this Amatch::Hamming instance to match  Amatch::Hamming#pattern against
+ * <code>strings</code>, and compute a Hamming distance metric number between
+ * 0.0 for very unsimilar strings and 1.0 for an exact match.
  * <code>strings</code> has to be either a String or an Array of Strings. The
  * returned <code>results</code> are either a Fixnum or an Array of Fixnums
  * respectively.
@@ -1031,9 +1037,10 @@ static VALUE rb_Hamming_similar(VALUE self, VALUE strings)
 /*
  * call-seq: hamming_similar(strings) -> results
  *
- * If called on a String, this string is used as a Hamming#pattern to match
- * against <code>strings</code>. It returns a Hamming metric number between
- * 0.0 for very unsimilar strings and 1.0 for an exact match. <code>strings</code>
+ * If called on a String, this string is used as a Amatch::Hamming#pattern to
+ * match against <code>strings</code>. It returns a Hamming distance metric
+ * number between 0.0 for very unsimilar strings and 1.0 for an exact match.
+ * <code>strings</code>
  * has to be either a String or an Array of Strings. The returned
  * <code>results</code> are either a Float or an Array of Floats respectively.
  */
@@ -1090,7 +1097,6 @@ static VALUE rb_LongestSubsequence_match(VALUE self, VALUE strings)
 /*
  * call-seq: similar(strings) -> results
  * 
- * TODO
  */
 static VALUE rb_LongestSubsequence_similar(VALUE self, VALUE strings)
 {                                                                            
@@ -1101,7 +1107,12 @@ static VALUE rb_LongestSubsequence_similar(VALUE self, VALUE strings)
 /*
  * call-seq: longest_subsequence_similar(strings) -> results
  *
- * TODO
+ * If called on a String, this string is used as a
+ * Amatch::LongestSubsequence#pattern to match against <code>strings</code>. It
+ * returns a longest subsequence distance metric number between 0.0 for very
+ * unsimilar strings and 1.0 for an exact match. <code>strings</code> has to be
+ * either a String or an Array of Strings. The returned <code>results</code>
+ * are either a Float or an Array of Floats respectively.
  */
 static VALUE rb_str_longest_subsequence_similar(VALUE self, VALUE strings)
 {                                                                            
@@ -1269,7 +1280,6 @@ void Init_amatch()
     rb_define_method(rb_cSellers, "match", rb_Sellers_match, 1);
     rb_define_method(rb_cSellers, "search", rb_Sellers_search, 1);
     rb_define_method(rb_cSellers, "similar", rb_Sellers_similar, 1);
-    rb_define_method(rb_cString, "sellers_similar", rb_str_sellers_similar, 1);
 
     /* Hamming */
     rb_cHamming = rb_define_class_under(rb_mAmatch, "Hamming", rb_cObject);
