@@ -717,7 +717,7 @@ static VALUE rb_Levenshtein_search(VALUE self, VALUE strings)
  * Document-class: Amatch::Sellers
  *
  * The Sellers edit distance is very similar to the Levenshtein edit distance.
- * The difference is, that you can als use different weights for every
+ * The difference is, that you can also specify different weights for every
  * operation to prefer special operations over others. This extension of the
  * Sellers edit distance is also known under the names: Needleman-Wunsch
  * distance.
@@ -891,8 +891,15 @@ static VALUE rb_Sellers_search(VALUE self, VALUE strings)
  * The pair distance between two strings is based on the number of adjacent
  * character pairs, that are contained in both strings. The advantage of
  * considering adjacent characters, is to take account not only of the
- * characters, but also of the character ordering in the original strings. This
- * metric is very good in finding similarities in natural languages.
+ * characters, but also of the character ordering in the original strings.
+ * 
+ * This metric is very capable to find similarities in natural languages.
+ * It is explained in more detail in Simon White's article "How to Strike a
+ * Match", located at this url:
+ * http://www.catalysoft.com/articles/StrikeAMatch.html
+ * It is also very similar (a special case) to the method described under
+ * http://citeseer.lcs.mit.edu/gravano01using.html in "Using q-grams in a DBMS
+ * for Approximate String Processing."
  */
 DEF_RB_FREE(PairDistance, PairDistance)
 
@@ -1097,6 +1104,12 @@ static VALUE rb_LongestSubsequence_match(VALUE self, VALUE strings)
 /*
  * call-seq: similar(strings) -> results
  * 
+ * Uses this Amatch::LongestSubsequence instance to match
+ * Amatch::LongestSubsequence#pattern against <code>strings</code>, and compute
+ * a longest substring distance metric number between 0.0 for very unsimilar
+ * strings and 1.0 for an exact match. <code>strings</code> has to be either a
+ * String or an Array of Strings. The returned <code>results</code> are either
+ * a Fixnum or an Array of Fixnums
  */
 static VALUE rb_LongestSubsequence_similar(VALUE self, VALUE strings)
 {                                                                            
@@ -1154,10 +1167,10 @@ DEF_CONSTRUCTOR(LongestSubstring, General)
  * call-seq: match(strings) -> results
  * 
  * Uses this Amatch::LongestSubstring instance to match
- * LongestSubstring#pattern against <code>strings</code>. <code>strings</code>
- * has to be either a String or an Array of Strings. The returned
- * <code>results</code> are either a Fixnum or an Array of Fixnums
- * respectively.
+ * LongestSubstring#pattern against <code>strings</code>, that is compute the
+ * length of the longest common substring. <code>strings</code> has to be
+ * either a String or an Array of Strings. The returned <code>results</code>
+ * are either a Fixnum or an Array of Fixnums respectively.
  */
 static VALUE rb_LongestSubstring_match(VALUE self, VALUE strings)
 {
@@ -1168,7 +1181,13 @@ static VALUE rb_LongestSubstring_match(VALUE self, VALUE strings)
 /*
  * call-seq: similar(strings) -> results
  * 
- * TODO
+ * Uses this Amatch::LongestSubstring instance to match
+ * Amatch::LongestSubstring#pattern against <code>strings</code>, and compute a
+ * longest substring distance metric number between 0.0 for very unsimilar
+ * strings and 1.0 for an exact match. <code>strings</code> has to be either a
+ * String or an Array of Strings. The returned <code>results</code> are either
+ * a Fixnum or an Array of Fixnums
+ * respectively.
  */
 static VALUE rb_LongestSubstring_similar(VALUE self, VALUE strings)
 {
@@ -1179,7 +1198,12 @@ static VALUE rb_LongestSubstring_similar(VALUE self, VALUE strings)
 /*
  * call-seq: longest_substring_similar(strings) -> results
  *
- * TODO
+ * If called on a String, this string is used as a
+ * Amatch::LongestSubstring#pattern to match against <code>strings</code>. It
+ * returns a longest substring distance metric number between 0.0 for very
+ * unsimilar strings and 1.0 for an exact match. <code>strings</code> has to be
+ * either a String or an Array of Strings. The returned <code>results</code>
+ * are either a Float or an Array of Floats respectively.
  */
 static VALUE rb_str_longest_substring_similar(VALUE self, VALUE strings)
 {                                                                            
@@ -1220,32 +1244,65 @@ static VALUE rb_str_longest_substring_similar(VALUE self, VALUE strings)
  *
  * == Examples
  *  require 'amatch'
+ *  # => true
  *  include Amatch
- *
+ *  # => Object
+ *  
  *  m = Sellers.new("pattern")
- *  m.match("pattren")                              # => 2.0
- *  m.match(["pattren","parent"])                   # => [2.0, 4.0]
- *  m.search("abcpattrendef")                       # => 2.0
- *  "pattern".sellers_match("pattren")          # => 2.0
- *  "pattern".sellers_search("abcpattrendef")   # => 2.0
- *
+ *  # => #<Amatch::Sellers:0x40366324>
+ *  m.match("pattren")
+ *  # => 2.0
+ *  m.substitution = m.insertion = 3
+ *  # => 3
+ *  m.match("pattren")
+ *  # => 4.0
+ *  m.reset_weights
+ *  # => #<Amatch::Sellers:0x40366324>
+ *  m.match(["pattren","parent"])
+ *  # => [2.0, 4.0]
+ *  m.search("abcpattrendef")
+ *  # => 2.0
+ *  
+ *  m = Levenshtein.new("pattern")
+ *  # => #<Amatch::Levenshtein:0x4035919c>
+ *  m.match("pattren")
+ *  # => 2
+ *  m.search("abcpattrendef")
+ *  # => 2
+ *  "pattern language".levenshtein_similar("language of patterns")
+ *  # => 0.2
+ *  
  *  m = Hamming.new("pattern")
- *  m.match("pattren")                  # => 2
- *  "pattern".hamming_match("pattren")  # => 2
+ *  # => #<Amatch::Hamming:0x40350858>
+ *  m.match("pattren")
+ *  # => 2
+ *  "pattern language".hamming_similar("language of patterns")
+ *  # => 0.1
  *  
  *  m = PairDistance.new("pattern")
- *  m.match("pattr en")                         # => 0.545454545454545
- *  m.match("pattr en", nil)                    # => 0.461538461538462
- *  m.match("pattr en", /t+/)                   # => 0.285714285714286
- *  "pattern".pair_distance_match("pattr en")   # => 0.545454545454545
- *
+ *  # => #<Amatch::PairDistance:0x40349be8>
+ *  m.match("pattr en")
+ *  # => 0.545454545454545
+ *  m.match("pattr en", nil)
+ *  # => 0.461538461538462
+ *  m.match("pattr en", /t+/)
+ *  # => 0.285714285714286
+ *  "pattern language".pair_distance_similar("language of patterns")
+ *  # => 0.928571428571429
+ *  
  *  m = LongestSubsequence.new("pattern")
- *  m.match("pattren")                              # => 6
- *  "pattern".longest_subsequence_match("pattren")  # => 6
- *
+ *  # => #<Amatch::LongestSubsequence:0x4033e900>
+ *  m.match("pattren")
+ *  # => 6
+ *  "pattern language".longest_subsequence_similar("language of patterns")
+ *  # => 0.4
+ *  
  *  m = LongestSubstring.new("pattern")
- *  m.match("pattren")                              # => 4
- *  "pattern".longest_substring_match("pattren")    # => 4
+ *  # => #<Amatch::LongestSubstring:0x403378d0>
+ *  m.match("pattren")
+ *  # => 4
+ *  "pattern language".longest_substring_similar("language of patterns")
+ *  # => 0.4
  *
  */
 
