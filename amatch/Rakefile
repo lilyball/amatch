@@ -3,17 +3,17 @@
 require 'rake/clean'
 require 'rake/testtask'
 require 'rake/gempackagetask'
+require 'rake/rdoctask'
 require 'rbconfig'
 
 include Config
 
-PKG_NAME = 'amatch'
 PKG_VERSION = File.read('VERSION').chomp
-PKG_FILES = Dir.glob("**/*").delete_if {|item|
-  item.include?("CVS") or item.include?("pkg")
-}
+PKG_FILES   = FileList['**/*']
+PKG_FILES.exclude(/CVS/)
+PKG_FILES.exclude(/^pkg/)
 
-task :default => [:test]
+task :default => :test
 
 desc "Run unit tests"
 task(:test => [:compile]) do
@@ -31,7 +31,7 @@ task :compile do
 end
 
 desc "Installing library"
-task(:install => [:test]) do
+task :install => :test do
   src, = Dir['ext/amatch.*'].reject { |x| /\.[co]$/.match x }
   filename = File.basename(src)
   dst = File.join(CONFIG["sitelibdir"], filename)
@@ -45,66 +45,74 @@ task :clean do
     sh "make distclean" if File.exist?('Makefile')
   end
 end
-desc "Creating RDOC"
-task :doc do
-  sh "rdoc -m Amatch ext/amatch.c"
+
+Rake::RDocTask.new do |rd|
+  rd.main = "Amatch"
+  rd.rdoc_dir = 'doc'
+  rd.rdoc_files.include("ext/amatch.c")
 end
 
-spec = Gem::Specification.new do |s|
+task :my_package do
+  spec = Gem::Specification.new do |s|
 
-  #### Basic information.
+    #### Basic information.
 
-  s.name = 'amatch'
-  s.version = PKG_VERSION
-  s.summary = "Approximate String Matching library"
-  s.description = <<EOF
-Amatch is a library for approximate string matching and searching in strings.
-Several algorithms can be used to do this, and it's also possible to compute a
-similarity metric number between 0.0 and 1.0 for two given strings.
-EOF
+    s.name = 'amatch'
+    s.version = PKG_VERSION
+    s.summary = "Approximate String Matching library"
+    s.description = <<-EOF
+    Amatch is a library for approximate string matching and searching in strings.
+    Several algorithms can be used to do this, and it's also possible to compute a
+    similarity metric number between 0.0 and 1.0 for two given strings.
+    EOF
 
-  #### Dependencies and requirements.
+    #### Dependencies and requirements.
 
-  #s.add_dependency('log4r', '> 1.0.4')
-  #s.requirements << ""
+    #s.add_dependency('log4r', '> 1.0.4')
+    #s.requirements << ""
 
-  s.files = PKG_FILES
+    s.files = PKG_FILES
 
-  #### C code extensions.
+    #### C code extensions.
 
-  s.extensions << "ext/extconf.rb"
+    s.extensions << "ext/extconf.rb"
 
-  #### Load-time details: library and application (you will need one or both).
+    #### Load-time details: library and application (you will need one or both).
 
-  s.require_path = 'lib'                         # Use these for libraries.
-  s.autorequire = 'amatch'
+    s.require_path = 'lib'                         # Use these for libraries.
+    s.autorequire = 'amatch'
 
-  s.bindir = "bin"                               # Use these for applications.
-  s.executables = ["agrep.rb"]
-  s.default_executable = "agrep.rb"
+    s.bindir = "bin"                               # Use these for applications.
+    s.executables = ["agrep.rb"]
+    s.default_executable = "agrep.rb"
 
-  #### Documentation and testing.
+    #### Documentation and testing.
 
-  s.has_rdoc = true
-  #s.extra_rdoc_files = rd.rdoc_files.reject { |fn| fn =~ /\.rb$/ }.to_a
-  s.rdoc_options <<
-    '--title' <<  'Amatch -- Approximate Matching' <<
-    '--main' << 'Amatch' <<
-    '--line-numbers'
-  s.test_files << 'tests/runner.rb'
+    s.has_rdoc = true
+    #s.extra_rdoc_files = rd.rdoc_files.reject { |fn| fn =~ /\.rb$/ }
+    s.rdoc_options <<
+      '--title' <<  'Amatch -- Approximate Matching' <<
+      '--main' << 'Amatch' <<
+      '--line-numbers'
+    s.test_files << 'tests/runner.rb'
 
-  #### Author and project details.
+    #### Author and project details.
 
-  s.author = "Florian Frank"
-  s.email = "flori@ping.de"
-  s.homepage = "http://amatch.rubyforge.org"
-  s.rubyforge_project = "amatch"
+    s.author = "Florian Frank"
+    s.email = "flori@ping.de"
+    s.homepage = "http://amatch.rubyforge.org"
+    s.rubyforge_project = "amatch"
+  end
+
+  Rake::GemPackageTask.new(spec) do |pkg|
+    pkg.need_tar      = true
+    pkg.package_files += PKG_FILES
+  end
 end
 
-Rake::GemPackageTask.new(spec) do |pkg|
-  pkg.need_tar = true
-  pkg.package_files += PKG_FILES
+task :my_doc => :rdoc do
+  PKG_FILES.include('doc/**/*')
 end
 
-task :release => [ :clean, :package ]
+task :release => [ :clean, :my_doc, :my_package, :package ]
   # vim: set et sw=2 ts=2:
