@@ -12,6 +12,7 @@ PKG_VERSION = File.read('VERSION').chomp
 PKG_FILES   = FileList['**/*']
 PKG_FILES.exclude(/CVS/)
 PKG_FILES.exclude(/^pkg/)
+PKG_FILES.exclude(/^doc/)
 
 task :default => :test
 
@@ -46,8 +47,13 @@ task :clean do
   end
 end
 
-spec = Gem::Specification.new do |s|
+Rake::RDocTask.new do |rd|
+  rd.main = 'Amatch'
+  rd.rdoc_files.include("ext/**/*.rb")
+  rd.rdoc_dir = 'doc'
+end
 
+spec = Gem::Specification.new do |s|
   #### Basic information.
 
   s.name = 'amatch'
