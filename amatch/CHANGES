@@ -1,3 +1,8 @@
+2005-01-20 (0.2.0)
+    * Major changes in API and implementation:
+      Now the Levenshtein edit distance, Sellers edit distance, the Hamming
+      distance, the longest common subsequence length, the longest common
+      substring length, and the pair distance metric can be computed.
 2005-01-20 (0.1.4)
     * Better argument handling in initialization method
     * Minor changes in Rakefile and README.en

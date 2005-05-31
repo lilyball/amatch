@@ -1222,9 +1222,9 @@ static VALUE rb_str_longest_substring_similar(VALUE self, VALUE strings)
  *
  * This is a collection of classes that can be used for Approximate
  * matching, searching, and comparing of Strings. They implement algorithms
- * that compute the Sellers edit distance, the Hamming distance, the
- * longest common subsequence length, the longest common substring length, and
- * the pair distance metric.
+ * that compute the Levenshtein edit distance, Sellers edit distance, the
+ * Hamming distance, the longest common subsequence length, the longest common
+ * substring length, and the pair distance metric.
  *
  * == Author
  *
