@@ -46,74 +46,61 @@ task :clean do
   end
 end
 
-Rake::RDocTask.new do |rd|
-  rd.main = "Amatch"
-  rd.rdoc_dir = 'doc'
-  rd.rdoc_files.include("ext/amatch.c")
+spec = Gem::Specification.new do |s|
+
+  #### Basic information.
+
+  s.name = 'amatch'
+  s.version = PKG_VERSION
+  s.summary = "Approximate String Matching library"
+  s.description = <<EOF
+Amatch is a library for approximate string matching and searching in strings.
+Several algorithms can be used to do this, and it's also possible to compute a
+similarity metric number between 0.0 and 1.0 for two given strings.
+EOF
+
+  #### Dependencies and requirements.
+
+  #s.add_dependency('log4r', '> 1.0.4')
+  #s.requirements << ""
+
+  s.files = PKG_FILES
+
+  #### C code extensions.
+
+  s.extensions << "ext/extconf.rb"
+
+  #### Load-time details: library and application (you will need one or both).
+
+  s.require_path = 'ext'                         # Use these for libraries.
+  s.autorequire = 'amatch'
+
+  s.bindir = "bin"                               # Use these for applications.
+  s.executables = ["agrep.rb"]
+  s.default_executable = "agrep.rb"
+
+  #### Documentation and testing.
+
+  s.has_rdoc = true
+  #s.extra_rdoc_files = rd.rdoc_files.reject { |fn| fn =~ /\.rb$/ }
+  s.rdoc_options <<
+    '--title' <<  'Amatch -- Approximate Matching' <<
+    '--main' << 'Amatch' <<
+    '--line-numbers'
+  s.test_files << 'tests/runner.rb'
+
+  #### Author and project details.
+
+  s.author = "Florian Frank"
+  s.email = "flori@ping.de"
+  s.homepage = "http://amatch.rubyforge.org"
+  s.rubyforge_project = "amatch"
 end
 
-task :my_package do
-  spec = Gem::Specification.new do |s|
-
-    #### Basic information.
-
-    s.name = 'amatch'
-    s.version = PKG_VERSION
-    s.summary = "Approximate String Matching library"
-    s.description = <<-EOF
-    Amatch is a library for approximate string matching and searching in
-    strings. Several algorithms can be used to do this, and it's also
-    possible to compute a similarity metric number between 0.0 and 1.0 for
-    two given strings.
-    EOF
-
-    #### Dependencies and requirements.
-
-    #s.add_dependency('log4r', '> 1.0.4')
-    #s.requirements << ""
-
-    s.files = PKG_FILES
-
-    #### C code extensions.
-
-    s.extensions << "ext/extconf.rb"
-
-    #### Load-time details: library and application (you will need one or both).
-
-    s.require_path = 'lib'                         # Use these for libraries.
-    s.autorequire = 'amatch'
-
-    s.bindir = "bin"                               # Use these for applications.
-    s.executables = ["agrep.rb"]
-    s.default_executable = "agrep.rb"
-
-    #### Documentation and testing.
-
-    s.has_rdoc = true
-    #s.extra_rdoc_files = rd.rdoc_files.reject { |fn| fn =~ /\.rb$/ }
-    s.rdoc_options <<
-      '--title' <<  'Amatch -- Approximate Matching' <<
-      '--main' << 'Amatch' <<
-      '--line-numbers'
-    s.test_files << 'tests/runner.rb'
-
-    #### Author and project details.
-
-    s.author = "Florian Frank"
-    s.email = "flori@ping.de"
-    s.homepage = "http://amatch.rubyforge.org"
-    s.rubyforge_project = "amatch"
-  end
-
-  Rake::GemPackageTask.new(spec) do |pkg|
-    pkg.need_tar      = true
-    pkg.package_files += PKG_FILES
-  end
+Rake::GemPackageTask.new(spec) do |pkg|
+  pkg.need_tar      = true
+  pkg.package_files += PKG_FILES
 end
 
-task :my_doc => :rdoc do
-  PKG_FILES.include('doc/**/*')
-end
-
-task :release => [ :clean, :my_doc, :my_package, :package ]
+task :release => [ :clean, :package ]
   # vim: set et sw=2 ts=2:
