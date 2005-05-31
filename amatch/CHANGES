@@ -1,4 +1,4 @@
-2005-01-20 (0.2.0)
+2005-06-01 (0.2.0)
     * Major changes in API and implementation:
       Now the Levenshtein edit distance, Sellers edit distance, the Hamming
       distance, the longest common subsequence length, the longest common

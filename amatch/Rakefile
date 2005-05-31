@@ -47,7 +47,6 @@ task :clean do
   end
 end
 
-desc "Creation RDOC documentation"
 Rake::RDocTask.new do |rd|
   rd.main = 'Amatch'
   rd.rdoc_files.include("ext/**/*.rb")
@@ -104,7 +103,6 @@ EOF
   s.rubyforge_project = "amatch"
 end
 
-desc "Creating Gem and Archive packages"
 Rake::GemPackageTask.new(spec) do |pkg|
   pkg.need_tar      = true
   pkg.package_files += PKG_FILES
