@@ -61,9 +61,10 @@ task :my_package do
     s.version = PKG_VERSION
     s.summary = "Approximate String Matching library"
     s.description = <<-EOF
-    Amatch is a library for approximate string matching and searching in strings.
-    Several algorithms can be used to do this, and it's also possible to compute a
-    similarity metric number between 0.0 and 1.0 for two given strings.
+    Amatch is a library for approximate string matching and searching in
+    strings. Several algorithms can be used to do this, and it's also
+    possible to compute a similarity metric number between 0.0 and 1.0 for
+    two given strings.
     EOF
 
     #### Dependencies and requirements.
