@@ -8,8 +8,9 @@ class TC_Sellers < TC_Levenshtein
   D = 0.000001
 
   def setup
-    @empty = Sellers.new('')
-    @simple = Sellers.new('test')
+    @empty    = Sellers.new('')
+    @simple   = Sellers.new('test')
+    @long     = Sellers.new('A' * 160)
   end
 
   def test_weights
@@ -85,10 +86,13 @@ class TC_Sellers < TC_Levenshtein
     assert_in_delta 0.75, @simple.similar('tesa'), D
     assert_in_delta 0.25, @simple.similar('taex'), D
     assert_in_delta 0.4, @simple.similar('aaatestbbb'), D
-    assert_in_delta 0.75, @simple.pattern.levenshtein_similar('est'), D
     @simple.insertion = 1
     @simple.substitution = @simple.deletion = 2
     assert_in_delta 0.875, @simple.similar('tst'), D
+  end
+
+  def test_long
+    assert_in_delta 1.0, @long.similar(@long.pattern), D
   end
 end
   # vim: set et sw=2 ts=2:

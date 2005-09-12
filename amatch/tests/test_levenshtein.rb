@@ -7,8 +7,9 @@ class TC_Levenshtein < Test::Unit::TestCase
   D = 0.000001
   
   def setup
-    @empty = Levenshtein.new('')
-    @simple = Levenshtein.new('test')
+    @empty    = Levenshtein.new('')
+    @simple   = Levenshtein.new('test')
+    @long     = Levenshtein.new('A' * 160)
   end
 
   def test_match
@@ -69,6 +70,10 @@ class TC_Levenshtein < Test::Unit::TestCase
     assert_in_delta 0.25, @simple.similar('taex'), D
     assert_in_delta 0.4, @simple.similar('aaatestbbb'), D
     assert_in_delta 0.75, @simple.pattern.levenshtein_similar('est'), D
+  end
+
+  def test_long
+    assert_in_delta 1.0, @long.similar(@long.pattern), D
   end
 end
   # vim: set et sw=2 ts=2:

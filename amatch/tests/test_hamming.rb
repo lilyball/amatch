@@ -9,6 +9,7 @@ class TC_Hamming < Test::Unit::TestCase
   def setup
     @small   = Hamming.new('test')
     @empty   = Hamming.new('')
+    @long    = Hamming.new('A' * 160)
   end
 
   def test_empty
@@ -49,6 +50,10 @@ class TC_Hamming < Test::Unit::TestCase
     assert_in_delta 0.25, @small.similar('taex'), D
     assert_in_delta 0.1, @small.similar('aaatestbbb'), D
     assert_in_delta 0.8, @small.pattern.hamming_similar('testa'), D
+  end
+
+  def test_long
+    assert_in_delta 1.0, @long.similar(@long.pattern), D
   end
 end
   # vim: set et sw=2 ts=2:

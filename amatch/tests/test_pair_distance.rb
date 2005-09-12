@@ -12,6 +12,7 @@ class TC_PairDistance < Test::Unit::TestCase
     @france   = PairDistance.new('republic of france')
     @germany  = PairDistance.new('federal republic of germany')
     @csv      = PairDistance.new('foo,bar,baz')
+    @long     = PairDistance.new('A' * 160)
   end
 
   def test_empty
@@ -53,6 +54,7 @@ class TC_PairDistance < Test::Unit::TestCase
     assert_in_delta 0.6,        @single.match('aaa test bbb'), D
     assert_in_delta 0.6,        @single.match('test aaa bbb'), D
     assert_in_delta 0.6,        @single.match('bbb aaa test'), D
+    assert_in_delta 0.8571428,  @single.pattern.pair_distance_similar('atest'), D
   end
 
   def test_csv
@@ -76,6 +78,10 @@ class TC_PairDistance < Test::Unit::TestCase
     assert_in_delta 0.9,        @csv.match('foo,baz,bar', nil), D
     assert_in_delta 0.9,        @csv.match('foo,baz,bar'), D
     assert_in_delta 0.9,        @csv.similar('foo,baz,bar'), D
+  end
+
+  def test_long
+    assert_in_delta 1.0, @long.similar(@long.pattern), D
   end
 end
   # vim: set et sw=2 ts=2:

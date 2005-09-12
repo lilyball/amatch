@@ -157,7 +157,7 @@ VALUE function(VALUE self, VALUE value)                                 \
 
 typedef struct GeneralStruct {
     char        *pattern;
-    char        pattern_len;
+    int         pattern_len;
 } General;
 
 DEF_ALLOCATOR(General)
@@ -166,7 +166,7 @@ DEF_ITERATE_STRINGS(General)
 
 typedef struct SellersStruct {
     char        *pattern;
-    char        pattern_len;
+    int         pattern_len;
     double      substitution;
     double      deletion;
     double      insertion;
@@ -185,7 +185,7 @@ static void Sellers_reset_weights(Sellers *self)
 
 typedef struct PairDistanceStruct {
     char        *pattern;
-    char        pattern_len;
+    int         pattern_len;
     PairArray   *pattern_pair_array;
 } PairDistance;
 
@@ -694,7 +694,7 @@ static VALUE rb_Levenshtein_similar(VALUE self, VALUE strings)
  */
 static VALUE rb_str_levenshtein_similar(VALUE self, VALUE strings)
 {
-    VALUE amatch = rb_Levenshtein_new(rb_cSellers, self);
+    VALUE amatch = rb_Levenshtein_new(rb_cLevenshtein, self);
     return rb_Levenshtein_similar(amatch, strings);
 }
 
@@ -982,7 +982,7 @@ static VALUE rb_PairDistance_match(int argc, VALUE *argv, VALUE self)
  */
 static VALUE rb_str_pair_distance_similar(VALUE self, VALUE strings)
 {
-    VALUE amatch = rb_PairDistance_new(rb_cSellers, self);
+    VALUE amatch = rb_PairDistance_new(rb_cPairDistance, self);
     return rb_PairDistance_match(1, &strings, amatch);
 }
 
@@ -1133,7 +1133,7 @@ static VALUE rb_LongestSubsequence_similar(VALUE self, VALUE strings)
  */
 static VALUE rb_str_longest_subsequence_similar(VALUE self, VALUE strings)
 {                                                                            
-    VALUE amatch = rb_LongestSubsequence_new(rb_cSellers, self);
+    VALUE amatch = rb_LongestSubsequence_new(rb_cLongestSubsequence, self);
     return rb_LongestSubsequence_similar(amatch, strings);
 }
 
@@ -1211,7 +1211,7 @@ static VALUE rb_LongestSubstring_similar(VALUE self, VALUE strings)
  */
 static VALUE rb_str_longest_substring_similar(VALUE self, VALUE strings)
 {                                                                            
-    VALUE amatch = rb_LongestSubsequence_new(rb_cSellers, self);
+    VALUE amatch = rb_LongestSubstring_new(rb_cLongestSubstring, self);
     return rb_LongestSubstring_similar(amatch, strings);
 }
 

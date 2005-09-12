@@ -9,6 +9,7 @@ class TC_LongestSubstring < Test::Unit::TestCase
   def setup
     @small   = LongestSubstring.new('test')
     @empty   = LongestSubstring.new('')
+    @long    = LongestSubstring.new('A' * 160)
   end
 
   def test_empty_substring
@@ -51,7 +52,11 @@ class TC_LongestSubstring < Test::Unit::TestCase
     assert_in_delta 0.75, @small.similar('tesa'), D
     assert_in_delta 0.25, @small.similar('taex'), D
     assert_in_delta 0.4, @small.similar('aaatestbbb'), D
-    assert_in_delta 0.75, @small.pattern.levenshtein_similar('est'), D
+    assert_in_delta 0.75, @small.pattern.longest_substring_similar('est'), D
+  end
+
+  def test_long
+    assert_in_delta 1.0, @long.similar(@long.pattern), D
   end
 end
   # vim: set et sw=2 ts=2:
