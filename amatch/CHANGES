@@ -1,5 +1,6 @@
 2005-09-12 (0.2.1)
-    * Bugfix: Wrong type for pattern length corrected.
+    * Bugfix: Wrong type for pattern length corrected. Thanks to David
+    Heinemeier Hansson for reporting it.
 2005-06-01 (0.2.0)
     * Major changes in API and implementation:
       Now the Levenshtein edit distance, Sellers edit distance, the Hamming
