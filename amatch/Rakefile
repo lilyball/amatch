@@ -43,6 +43,7 @@ desc "Removing generated files"
 task :clean do
   rm_rf 'doc'
   cd 'ext'  do
+    rm_f 'amatch.o', :verbose => true
     ruby 'extconf.rb'
     sh "make distclean" if File.exist?('Makefile')
   end
