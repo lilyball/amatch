@@ -12,6 +12,12 @@ class TC_Levenshtein < Test::Unit::TestCase
     @long     = Levenshtein.new('A' * 160)
   end
 
+  def test_long
+    a = "lost this fantasy,  this fantasy,  this  fantasy,  this fantasy,  this fantasy,  this fantasy\r\n\r\nGood love  Neat work\r\n\r\nSuper job Fancy work\r\n\r\nPants job Cool work"
+    b = "lost\r\n\r\nGood love Neat work\r\n\r\nSuper  job Fancy work\r\n\r\nPants job Cool work"
+    p a.levenshtein_similar b 
+  end
+
   def test_match
     assert_equal 4,     @simple.match('')
     assert_equal 0,     @simple.match('test')
