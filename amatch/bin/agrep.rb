@@ -16,18 +16,14 @@ def usage(msg, options)
   exit 0
 end
 
-class MyAmatch < Amatch
-  def l_search_relative(strings)
-    if strings.is_a? Array
-      l_search(strings).map { |x| x / pattern.size }
-    else
-      l_search(strings) / pattern.size
-    end
+class Amatch::Levenshtein
+  def search_relative(strings)
+    search(strings).to_f / pattern.size
   end
 end
 
 $distance = 1
-$mode = :l_search
+$mode = :search
 begin
   parser = GetoptLong.new
   options = [
@@ -43,7 +39,7 @@ begin
     when 'distance'
       $distance = arg.to_f
     when 'relative'
-      $mode = :l_search_relative
+      $mode = :search_relative
     when 'verbose'
       $verbose = 1
     when 'help'
@@ -55,7 +51,7 @@ rescue
 end
 pattern = ARGV.shift or usage('Pattern needed!', options)
 
-matcher = MyAmatch.new(pattern)
+matcher = Amatch::Levenshtein.new(pattern)
 size = 0
 start = Time.new
 if ARGV.size > 0 then
@@ -64,7 +60,7 @@ if ARGV.size > 0 then
     size += File.size(filename)
     begin
       File.open(filename, 'r').each_line do |line|
-        if matcher.__send__($mode, line) < $distance
+        if matcher.__send__($mode, line) <= $distance
           puts "#{filename}:#{line}"
         end
       end
