@@ -1,4 +1,5 @@
 #! /usr/bin/env ruby
+# vim: set et sw=2 ts=2:
 #
 ## $Id$
 #
@@ -7,7 +8,7 @@ require 'amatch'
 require 'getoptlong'
 
 def usage(msg, options)
-  print msg, "\nUsage: #{File.basename($0)} pattern [FILE ...]\n\n"
+  puts msg, "Usage: #{File.basename($0)} [OPTIONS] PATTERN [FILE ...]", ""
   options.each do |o|
     puts "  " + o[1] + ", " + o[0] + " " +
       (o[2] == GetoptLong::REQUIRED_ARGUMENT ? 'ARGUMENT' : '')
@@ -65,7 +66,7 @@ if ARGV.size > 0 then
         end
       end
     rescue
-      STDERR.print "Failure at #{filename}: #{$!} => Skipping!\n"
+      STDERR.puts "Failure at #{filename}: #{$!} => Skipping!"
     end
   end
 else
@@ -80,4 +81,3 @@ time = Time.new - start
 $verbose and STDERR.printf "%.3f secs running, scanned %.3f KB/s.\n",
   time, size / time / 1024
 exit 0
-  # vim: set et sw=2 ts=2:
