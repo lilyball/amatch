@@ -1,5 +1,4 @@
-# Rakefile for Amatch      -*- ruby -*-
-
+# vim: set et sw=2 ts=2:
 require 'rake/clean'
 require 'rake/testtask'
 require 'rake/gempackagetask'
@@ -17,7 +16,7 @@ PKG_FILES.exclude(/^doc/)
 task :default => :test
 
 desc "Run unit tests"
-task(:test => [:compile]) do
+task :test => :compile do
   cd 'tests' do
     ruby %{-I../ext runner.rb}
   end
@@ -43,7 +42,6 @@ desc "Removing generated files"
 task :clean do
   rm_rf 'doc'
   cd 'ext'  do
-    rm_f 'amatch.o', :verbose => true
     ruby 'extconf.rb'
     sh "make distclean" if File.exist?('Makefile')
   end
@@ -111,4 +109,3 @@ Rake::GemPackageTask.new(spec) do |pkg|
 end
 
 task :release => [ :clean, :package ]
-  # vim: set et sw=2 ts=2:
