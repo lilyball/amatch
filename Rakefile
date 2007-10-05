@@ -54,8 +54,6 @@ Rake::RDocTask.new do |rd|
 end
 
 spec = Gem::Specification.new do |s|
-  #### Basic information.
-
   s.name = 'amatch'
   s.version = PKG_VERSION
   s.summary = "Approximate String Matching library"
@@ -65,37 +63,22 @@ Several algorithms can be used to do this, and it's also possible to compute a
 similarity metric number between 0.0 and 1.0 for two given strings.
 EOF
 
-  #### Dependencies and requirements.
-
-  #s.add_dependency('log4r', '> 1.0.4')
-  #s.requirements << ""
-
   s.files = PKG_FILES
-
-  #### C code extensions.
 
   s.extensions << "ext/extconf.rb"
 
-  #### Load-time details: library and application (you will need one or both).
+  s.require_path = 'ext'
 
-  s.require_path = 'ext'                         # Use these for libraries.
-  s.autorequire = 'amatch'
-
-  s.bindir = "bin"                               # Use these for applications.
+  s.bindir = "bin"
   s.executables = ["agrep.rb"]
   s.default_executable = "agrep.rb"
 
-  #### Documentation and testing.
-
   s.has_rdoc = true
-  #s.extra_rdoc_files = FileList['ext/amatch.c']
   s.rdoc_options <<
     '--title' <<  'Amatch -- Approximate Matching' <<
     '--main' << 'Amatch' <<
     '--line-numbers'
   s.test_files << 'tests/runner.rb'
-
-  #### Author and project details.
 
   s.author = "Florian Frank"
   s.email = "flori@ping.de"
