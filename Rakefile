@@ -1,10 +1,12 @@
 # vim: set et sw=2 ts=2:
 require 'rake/clean'
 require 'rake/testtask'
-require 'rake/gempackagetask'
 require 'rake/rdoctask'
+begin
+  require 'rake/gempackagetask'
+rescue LoadError
+end
 require 'rbconfig'
-
 include Config
 
 PKG_VERSION = File.read('VERSION').chomp
@@ -53,42 +55,44 @@ Rake::RDocTask.new do |rd|
   rd.rdoc_dir = 'doc'
 end
 
-spec = Gem::Specification.new do |s|
-  s.name = 'amatch'
-  s.version = PKG_VERSION
-  s.summary = "Approximate String Matching library"
-  s.description = <<EOF
+if defined? Gem
+  spec = Gem::Specification.new do |s|
+    s.name = 'amatch'
+    s.version = PKG_VERSION
+    s.summary = "Approximate String Matching library"
+    s.description = <<EOF
 Amatch is a library for approximate string matching and searching in strings.
 Several algorithms can be used to do this, and it's also possible to compute a
 similarity metric number between 0.0 and 1.0 for two given strings.
 EOF
 
-  s.files = PKG_FILES
+    s.files = PKG_FILES
 
-  s.extensions << "ext/extconf.rb"
+    s.extensions << "ext/extconf.rb"
 
-  s.require_path = 'ext'
+    s.require_path = 'ext'
 
-  s.bindir = "bin"
-  s.executables = ["agrep.rb"]
-  s.default_executable = "agrep.rb"
+    s.bindir = "bin"
+    s.executables = ["agrep.rb"]
+    s.default_executable = "agrep.rb"
 
-  s.has_rdoc = true
-  s.rdoc_options <<
-    '--title' <<  'Amatch -- Approximate Matching' <<
-    '--main' << 'Amatch' <<
-    '--line-numbers'
-  s.test_files << 'tests/runner.rb'
+    s.has_rdoc = true
+    s.rdoc_options <<
+      '--title' <<  'Amatch -- Approximate Matching' <<
+      '--main' << 'Amatch' <<
+      '--line-numbers'
+    s.test_files << 'tests/runner.rb'
 
-  s.author = "Florian Frank"
-  s.email = "flori@ping.de"
-  s.homepage = "http://amatch.rubyforge.org"
-  s.rubyforge_project = "amatch"
-end
+    s.author = "Florian Frank"
+    s.email = "flori@ping.de"
+    s.homepage = "http://amatch.rubyforge.org"
+    s.rubyforge_project = "amatch"
+  end
 
-Rake::GemPackageTask.new(spec) do |pkg|
-  pkg.need_tar      = true
-  pkg.package_files += PKG_FILES
+  Rake::GemPackageTask.new(spec) do |pkg|
+    pkg.need_tar      = true
+    pkg.package_files += PKG_FILES
+  end
 end
 
 task :release => [ :clean, :package ]
