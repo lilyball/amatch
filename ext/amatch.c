@@ -1,5 +1,6 @@
 #include "ruby.h"
 #include "pair.h"
+#include <ctype.h>
 
 /*
  * Document-method: pattern
@@ -19,7 +20,8 @@
 
 
 static VALUE rb_mAmatch, rb_cLevenshtein, rb_cSellers, rb_cHamming,
-             rb_cPairDistance, rb_cLongestSubsequence, rb_cLongestSubstring;
+             rb_cPairDistance, rb_cLongestSubsequence, rb_cLongestSubstring,
+             rb_cJaro, rb_cJaroWinkler;
 
 static ID id_split, id_to_f;
 
@@ -132,6 +134,14 @@ VALUE function(VALUE self, VALUE value)                                 \
             Check_Type(obj, T_FLOAT)
 #define FLOAT2C(obj) RFLOAT(obj)->value
 
+#define CAST2BOOL(obj)                  \
+    if (obj == Qfalse || obj == Qnil)   \
+        obj = Qfalse;                   \
+    else                                \
+        obj = Qtrue;
+#define BOOL2C(obj) (obj == Qtrue)
+#define C2BOOL(obj) (obj ? Qtrue : Qfalse)
+
 #define OPTIMIZE_TIME                                   \
     if (amatch->pattern_len < RSTRING(string)->len) {   \
         a_ptr = amatch->pattern;                        \
@@ -191,6 +201,27 @@ typedef struct PairDistanceStruct {
 
 DEF_ALLOCATOR(PairDistance)
 DEF_PATTERN_ACCESSOR(PairDistance)
+
+typedef struct JaroStruct {
+    char *pattern;
+    int   pattern_len;
+    int   ignore_case;
+} Jaro;
+
+DEF_ALLOCATOR(Jaro)
+DEF_PATTERN_ACCESSOR(Jaro)
+DEF_ITERATE_STRINGS(Jaro)
+
+typedef struct JaroWinklerStruct {
+    char *pattern;
+    int   pattern_len;
+    int   ignore_case;
+    float scaling_factor;
+} JaroWinkler;
+
+DEF_ALLOCATOR(JaroWinkler)
+DEF_PATTERN_ACCESSOR(JaroWinkler)
+DEF_ITERATE_STRINGS(JaroWinkler)
 
 /*
  * Levenshtein edit distances are computed here:
@@ -614,6 +645,123 @@ static VALUE LongestSubstring_similar(General *amatch, VALUE string)
     if (a_len == 0 || b_len == 0) return rb_float_new(0.0);
     COMPUTE_LONGEST_SUBSTRING
     return rb_float_new(((double) result) / b_len);
+}
+
+/*
+ * Jaro computation
+ */
+
+#define COMPUTE_JARO                                                                \
+    l[0] = ALLOC_N(int, a_len);                                                     \
+    MEMZERO(l[0], int, a_len);                                                      \
+    l[1] = ALLOC_N(int, b_len);                                                     \
+    MEMZERO(l[1], int, b_len);                                                      \
+    max_dist = ((a_len > b_len ? a_len : b_len) / 2) - 1;                           \
+    m = 0;                                                                          \
+    for (i = 0; i < a_len; i++) {                                                   \
+        low = (i > max_dist ? i - max_dist : 0);                                     \
+        high = (i + max_dist < b_len ? i + max_dist : b_len);                       \
+        for (j = low; j <= high; j++) {                                              \
+            if (!l[1][j] && a_ptr[i] == b_ptr[j]) {                                 \
+                l[0][i] = 1;                                                        \
+                l[1][j] = 1;                                                        \
+                m++;                                                                \
+                break;                                                              \
+            }                                                                       \
+        }                                                                           \
+    }                                                                               \
+    if (m == 0) {                                                                   \
+        result = 0.0;                                                               \
+    } else {                                                                        \
+        k = t = 0;                                                                  \
+        for (i = 0; i < a_len; i++) {                                               \
+            if (l[0][i]) {                                                          \
+                for (j = k; j < b_len; j++) {                                       \
+                    if (l[1][j]) {                                                  \
+                        k = j + 1;                                                  \
+                        break;                                                      \
+                    }                                                               \
+                }                                                                   \
+                if (a_ptr[i] != b_ptr[j]) {                                         \
+                    t++;                                                            \
+                }                                                                   \
+            }                                                                       \
+        }                                                                           \
+        t = t / 2;                                                                  \
+        result = (((double)m)/a_len + ((double)m)/b_len + ((double)(m-t))/m)/3.0;   \
+    }
+
+#define LOWERCASE_STRINGS                                       \
+     char *ying = ALLOC_N(char, a_len);                         \
+     MEMCPY(ying, a_ptr, char, a_len);                          \
+     a_ptr = ying;                                              \
+     char *yang = ALLOC_N(char, b_len);                         \
+     MEMCPY(yang, b_ptr, char, b_len);                          \
+     b_ptr = yang;                                              \
+     for (i = 0; i < a_len; i++) {                              \
+         if (islower(a_ptr[i])) a_ptr[i] = toupper(a_ptr[i]);   \
+     }                                                          \
+     for (i = 0; i < b_len; i++) {                              \
+         if (islower(b_ptr[i])) b_ptr[i] = toupper(b_ptr[i]);   \
+     }
+
+#define FREE_STRINGS \
+     xfree(a_ptr);   \
+     xfree(b_ptr);
+
+static VALUE Jaro_match(Jaro *amatch, VALUE string)
+{
+    char *a_ptr, *b_ptr;
+    int a_len, b_len, max_dist, m, t, i, j, k, low, high;
+    int *l[2];
+    double result;
+
+    Check_Type(string, T_STRING);
+    OPTIMIZE_TIME
+    if (a_len == 0 && b_len == 0) return rb_float_new(1.0);
+    if (a_len == 0 || b_len == 0) return rb_float_new(0.0);
+    if (amatch->ignore_case) {
+        LOWERCASE_STRINGS
+    }
+    COMPUTE_JARO
+    if (amatch->ignore_case) {
+        FREE_STRINGS
+    }
+    return rb_float_new(result);
+}
+
+/*
+ * Jaro-Winkler computation
+ */
+
+static VALUE JaroWinkler_match(JaroWinkler *amatch, VALUE string)
+{
+    char *a_ptr, *b_ptr;
+    int a_len, b_len, max_dist, m, t, i, j, k, low, high, n;
+    int *l[2];
+    double result;
+
+    Check_Type(string, T_STRING);
+    OPTIMIZE_TIME
+    if (a_len == 0 && b_len == 0) return rb_float_new(1.0);
+    if (a_len == 0 || b_len == 0) return rb_float_new(0.0);
+    if (amatch->ignore_case) {
+        LOWERCASE_STRINGS
+    }
+    COMPUTE_JARO
+    n = 0;
+    for (i = 0; i < (a_len >= 4 ? 4 : a_len); i++) {
+        if (a_ptr[i] == b_ptr[i]) {
+            n++;
+        } else {
+            break;
+        }
+    }
+    result = result + n*amatch->scaling_factor*(1-result);
+    if (amatch->ignore_case) {
+        FREE_STRINGS
+    }
+    return rb_float_new(result);
 }
 
 /*
@@ -1216,6 +1364,179 @@ static VALUE rb_str_longest_substring_similar(VALUE self, VALUE strings)
 }
 
 /*
+ * Document-class: Amatch::Jaro
+ *
+ * This class computes the Jaro metric for two strings.
+ * The Jaro metric computes the similarity between 0 (no match)
+ * and 1 (exact match) by looking for matching and transposed characters.
+ */
+DEF_RB_FREE(Jaro, Jaro)
+
+/*
+ * Document-method: ignore_case
+ *
+ * call-seq: ignore_case -> true/false
+ *
+ * Returns whether case is ignored when computing matching characters.
+ */
+DEF_RB_READER(Jaro, rb_Jaro_ignore_case, ignore_case, C2BOOL)
+
+/*
+ * Document-method: ignore_case=
+ *
+ * call-seq: ignore_case=(true/false)
+ *
+ * Sets whether case is ignored when computing matching characters.
+ */
+DEF_RB_WRITER(Jaro, rb_Jaro_ignore_case_set, ignore_case,
+    int, CAST2BOOL, BOOL2C, != Qundef)
+
+/*
+ * call-seq: new(pattern)
+ *
+ * Creates a new Amatch::Jaro instance from <code>pattern</code>.
+ */
+static VALUE rb_Jaro_initialize(VALUE self, VALUE pattern)
+{
+    GET_STRUCT(Jaro)
+    Jaro_pattern_set(amatch, pattern);
+    amatch->ignore_case = 1;
+    return self;
+}
+
+DEF_CONSTRUCTOR(Jaro, Jaro)
+
+/*
+ * call-seq: match(strings) -> results
+ *
+ * Uses this Amatch::Jaro instance to match
+ * Jaro#pattern against <code>strings</code>, that is compute the
+ * jaro metric with the strings. <code>strings</code> has to be
+ * either a String or an Array of Strings. The returned <code>results</code>
+ * are either a Float or an Array of Floats respectively.
+ */
+static VALUE rb_Jaro_match(VALUE self, VALUE strings)
+{
+    GET_STRUCT(Jaro)
+    return Jaro_iterate_strings(amatch, strings, Jaro_match);
+}
+
+/*
+ * call-seq: jaro_similar(strings) -> results
+ *
+ * If called on a String, this string is used as a
+ * Amatch::Jaro#pattern to match against <code>strings</code>. It
+ * returns a Jaro metric number between 0.0 for very
+ * unsimilar strings and 1.0 for an exact match. <code>strings</code> has to be
+ * either a String or an Array of Strings. The returned <code>results</code>
+ * are either a Float or an Array of Floats respectively.
+ */
+static VALUE rb_str_jaro_similar(VALUE self, VALUE strings)
+{
+    VALUE amatch = rb_Jaro_new(rb_cJaro, self);
+    return rb_Jaro_match(amatch, strings);
+}
+
+/*
+ * Document-class: Amatch::JaroWinkler
+ *
+ * This class computes the Jaro-Winkler metric for two strings.
+ * The Jaro-Winkler metric computes the similarity between 0 (no match)
+ * and 1 (exact match) by looking for matching and transposed characters.
+ *
+ * It is a variant of the Jaro metric, with additional weighting towards
+ * common prefixes.
+ */
+DEF_RB_FREE(JaroWinkler, JaroWinkler)
+
+/*
+ * Document-method: ignore_case
+ *
+ * call-seq: ignore_case -> true/false
+ *
+ * Returns whether case is ignored when computing matching characters.
+ * Default is true.
+ */
+DEF_RB_READER(JaroWinkler, rb_JaroWinkler_ignore_case, ignore_case, C2BOOL)
+
+/*
+ * Document-method: scaling_factor
+ *
+ * call-seq: scaling_factor -> weight
+ *
+ * The scaling factor is how much weight to give common prefixes.
+ * Default is 0.1.
+ */
+DEF_RB_READER(JaroWinkler, rb_JaroWinkler_scaling_factor, scaling_factor, rb_float_new)
+
+/*
+ * Document-method: ignore_case=
+ *
+ * call-seq: ignore_case=(true/false)
+ *
+ * Sets whether case is ignored when computing matching characters.
+ */
+DEF_RB_WRITER(JaroWinkler, rb_JaroWinkler_ignore_case_set, ignore_case,
+    int, CAST2BOOL, BOOL2C, != Qundef)
+
+/*
+ * Document-method: scaling_factor=
+ *
+ * call-seq: scaling_factor=(weight)
+ *
+ * Sets the weight to give common prefixes.
+ */
+DEF_RB_WRITER(JaroWinkler, rb_JaroWinkler_scaling_factor_set, scaling_factor,
+    double, CAST2FLOAT, FLOAT2C, >= 0)
+
+/*
+ * call-seq: new(pattern)
+ *
+ * Creates a new Amatch::JaroWinkler instance from <code>pattern</code>.
+ */
+static VALUE rb_JaroWinkler_initialize(VALUE self, VALUE pattern)
+{
+    GET_STRUCT(JaroWinkler)
+    JaroWinkler_pattern_set(amatch, pattern);
+    amatch->ignore_case = 1;
+    amatch->scaling_factor = 0.1;
+    return self;
+}
+
+DEF_CONSTRUCTOR(JaroWinkler, JaroWinkler)
+
+/*
+ * call-seq: match(strings) -> results
+ *
+ * Uses this Amatch::Jaro instance to match
+ * Jaro#pattern against <code>strings</code>, that is compute the
+ * jaro metric with the strings. <code>strings</code> has to be
+ * either a String or an Array of Strings. The returned <code>results</code>
+ * are either a Float or an Array of Floats respectively.
+ */
+static VALUE rb_JaroWinkler_match(VALUE self, VALUE strings)
+{
+    GET_STRUCT(JaroWinkler)
+    return JaroWinkler_iterate_strings(amatch, strings, JaroWinkler_match);
+}
+
+/*
+ * call-seq: jarowinkler_similar(strings) -> results
+ *
+ * If called on a String, this string is used as a
+ * Amatch::JaroWinkler#pattern to match against <code>strings</code>. It
+ * returns a Jaro-Winkler metric number between 0.0 for very
+ * unsimilar strings and 1.0 for an exact match. <code>strings</code> has to be
+ * either a String or an Array of Strings. The returned <code>results</code>
+ * are either a Float or an Array of Floats respectively.
+ */
+static VALUE rb_str_jarowinkler_similar(VALUE self, VALUE strings)
+{
+    VALUE amatch = rb_JaroWinkler_new(rb_cJaro, self);
+    return rb_JaroWinkler_match(amatch, strings);
+}
+
+/*
  * = amatch - Approximate Matching Extension for Ruby
  *
  * == Description
@@ -1224,7 +1545,8 @@ static VALUE rb_str_longest_substring_similar(VALUE self, VALUE strings)
  * matching, searching, and comparing of Strings. They implement algorithms
  * that compute the Levenshtein edit distance, Sellers edit distance, the
  * Hamming distance, the longest common subsequence length, the longest common
- * substring length, and the pair distance metric.
+ * substring length, the pair distance metric, the Jaro metric, and
+ * the Jaro-Winkler metric.
  *
  * == Author
  *
@@ -1308,6 +1630,28 @@ static VALUE rb_str_longest_substring_similar(VALUE self, VALUE strings)
  *  "pattern language".longest_substring_similar("language of patterns")
  *  # => 0.4
  *
+ *  m = Jaro.new("pattern")
+ *  # => #<Amatch::Jaro:0x363b70>
+ *  m.match("paTTren")
+ *  # => 0.952380952380952
+ *  m.ignore_case = false
+ *  m.match("paTTren")
+ *  # => 0.742857142857143
+ *  "pattern language".jaro_similar("language of patterns")
+ *  # => 0.672222222222222
+ *
+ *  m = JaroWinkler.new("pattern")
+ *  # #<Amatch::JaroWinkler:0x3530b8>
+ *  m.match("paTTren")
+ *  # => 0.971428571712403
+ *  m.ignore_case = false
+ *  m.match("paTTren")
+ *  # => 0.79428571505206
+ *  m.scaling_factor = 0.05
+ *  m.match("pattren")
+ *  # => 0.961904762046678
+ *  "pattern language".jarowinkler_similar("language of patterns")
+ *  # => 0.672222222222222
  */
 
 void Init_amatch()
@@ -1381,6 +1725,32 @@ void Init_amatch()
     rb_define_method(rb_cLongestSubstring, "match", rb_LongestSubstring_match, 1);
     rb_define_method(rb_cLongestSubstring, "similar", rb_LongestSubstring_similar, 1);
     rb_define_method(rb_cString, "longest_substring_similar", rb_str_longest_substring_similar, 1);
+
+    /* Jaro */
+    rb_cJaro = rb_define_class_under(rb_mAmatch, "Jaro", rb_cObject);
+    rb_define_alloc_func(rb_cJaro, rb_Jaro_s_allocate);
+    rb_define_method(rb_cJaro, "initialize", rb_Jaro_initialize, 1);
+    rb_define_method(rb_cJaro, "pattern", rb_Jaro_pattern, 0);
+    rb_define_method(rb_cJaro, "pattern=", rb_Jaro_pattern_set, 1);
+    rb_define_method(rb_cJaro, "ignore_case", rb_Jaro_ignore_case, 0);
+    rb_define_method(rb_cJaro, "ignore_case=", rb_Jaro_ignore_case_set, 1);
+    rb_define_method(rb_cJaro, "match", rb_Jaro_match, 1);
+    rb_define_alias(rb_cJaro, "similar", "match");
+    rb_define_method(rb_cString, "jaro_similar", rb_str_jaro_similar, 1);
+
+    /* Jaro-Winkler */
+    rb_cJaroWinkler = rb_define_class_under(rb_mAmatch, "JaroWinkler", rb_cObject);
+    rb_define_alloc_func(rb_cJaroWinkler, rb_JaroWinkler_s_allocate);
+    rb_define_method(rb_cJaroWinkler, "initialize", rb_JaroWinkler_initialize, 1);
+    rb_define_method(rb_cJaroWinkler, "pattern", rb_JaroWinkler_pattern, 0);
+    rb_define_method(rb_cJaroWinkler, "pattern=", rb_JaroWinkler_pattern_set, 1);
+    rb_define_method(rb_cJaroWinkler, "ignore_case", rb_JaroWinkler_ignore_case, 0);
+    rb_define_method(rb_cJaroWinkler, "ignore_case=", rb_JaroWinkler_ignore_case_set, 1);
+    rb_define_method(rb_cJaroWinkler, "scaling_factor", rb_JaroWinkler_scaling_factor, 0);
+    rb_define_method(rb_cJaroWinkler, "scaling_factor=", rb_JaroWinkler_scaling_factor_set, 1);
+    rb_define_method(rb_cJaroWinkler, "match", rb_JaroWinkler_match, 1);
+    rb_define_alias(rb_cJaroWinkler, "similar", "match");
+    rb_define_method(rb_cString, "jarowinkler_similar", rb_str_jarowinkler_similar, 1);
 
     id_split = rb_intern("split");
     id_to_f = rb_intern("to_f");

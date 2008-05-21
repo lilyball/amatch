@@ -1,3 +1,5 @@
+2008-05-21 (0.2.4)
+    * Implement Jaro and Jaro-Winkler metrics.
 2006-06-25 (0.2.3)
     * Fixed agrep.rb to use the new API.
 2005-10-11 (0.2.2)

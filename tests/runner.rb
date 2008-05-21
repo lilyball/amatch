@@ -9,6 +9,8 @@ require 'test_pair_distance'
 require 'test_hamming'
 require 'test_longest_subsequence'
 require 'test_longest_substring'
+require 'test_jaro'
+require 'test_jaro_winkler'
 
 class TS_AllTests
   def self.suite
@@ -19,6 +21,8 @@ class TS_AllTests
     suite << TC_Hamming.suite
     suite << TC_LongestSubsequence.suite
     suite << TC_LongestSubstring.suite
+    suite << TC_Jaro.suite
+    suite << TC_JaroWinkler.suite
     suite
   end
 end
